@@ -28,8 +28,12 @@ android {
                 "META-INF/AL2.0", "META-INF/LGPL2.1",
             )
         }
+        jniLibs {
+            keepDebugSymbols.add("**/libandroidx.graphics.path.so")
+        }
     }
 }
+
 
 dependencies {
     val bom = platform("androidx.compose:compose-bom:2024.09.00")
