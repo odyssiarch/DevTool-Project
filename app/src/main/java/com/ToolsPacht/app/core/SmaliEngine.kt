@@ -112,7 +112,7 @@ object SmaliEngine : DexEngine {
         starts.forEachIndexed { i, s ->
             val dex = DexBackedDexFile(Opcodes.forApi(api), dexView(bytes, s, version))
             val dir = File(outDir, names[i]).apply { mkdirs() }
-            log("Membongkar ${names[i]} (${dex.classCount} class)")
+            log("Membongkar ${names[i]} (${dex.classes.size} class)")
             val opts = BaksmaliOptions()
             opts.apiLevel = api
             if (!Baksmali.disassembleDexFile(dex, dir, threadCount(), opts)) {
