@@ -24,8 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.jartool.app.core.Decompiler
-import com.jartool.app.core.Prefs
+import com.ToolsPacht.app.core.Decompiler
+import com.ToolsPacht.app.core.Prefs
 import com.jartool.app.ui.components.JarTopBarActions
 import com.jartool.app.ui.theme.JarColors
 import kotlinx.coroutines.CancellationException
