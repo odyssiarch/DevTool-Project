@@ -47,7 +47,7 @@ private fun listing(all: List<ClassEntry>, prefix: String): Listing {
 
 /** Penjelajah paket dan class dari semua dex di dalam JAR (termasuk kontainer dex 041). */
 @Composable
-fun BrowseScreen(name: String, onBack: () -> Unit) {
+fun BrowseScreen(name: String, onOpenCode: (String) -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     var classes by remember { mutableStateOf<List<ClassEntry>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -174,9 +174,14 @@ fun BrowseScreen(name: String, onBack: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { clip.setText(AnnotatedString(c.name)); selected = null }) { Text("Salin nama") }
+                TextButton(onClick = { selected = null; onOpenCode(c.name) }) { Text("Lihat Java") }
             },
-            dismissButton = { TextButton(onClick = { selected = null }) { Text("Tutup") } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { clip.setText(AnnotatedString(c.name)); selected = null }) { Text("Salin nama") }
+                    TextButton(onClick = { selected = null }) { Text("Tutup") }
+                }
+            },
         )
     }
 }

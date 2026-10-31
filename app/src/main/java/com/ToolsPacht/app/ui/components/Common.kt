@@ -30,6 +30,22 @@ fun JarTopBar(title: String, onBack: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JarTopBarActions(title: String, onBack: () -> Unit, actions: @Composable RowScope.() -> Unit) {
+    TopAppBar(
+        title = { Text(title) },
+        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Kembali") } },
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = JarColors.Black,
+            titleContentColor = JarColors.TextPrimary,
+            navigationIconContentColor = JarColors.TextPrimary,
+            actionIconContentColor = JarColors.TextPrimary,
+        ),
+    )
+}
+
 @Composable
 fun IconTile(icon: ImageVector, size: Dp = 48.dp) {
     Surface(shape = RoundedCornerShape(14.dp), color = JarColors.BlueDim, modifier = Modifier.size(size)) {

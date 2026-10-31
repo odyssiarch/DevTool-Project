@@ -1,5 +1,6 @@
 package com.jartool.app.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
@@ -103,7 +104,24 @@ fun AppRoot() {
                 DecompileScreen(onBack = { nav.popBackStack() }, onPicked = { nav.navigate("browse/$it") })
             }
             composable("browse/{name}") { e ->
-                BrowseScreen(e.arguments?.getString("name").orEmpty()) { nav.popBackStack() }
+                val project = e.arguments?.getString("name").orEmpty()
+                BrowseScreen(
+                    project,
+                    onOpenCode = { nav.navigate("code/$project?cls=${Uri.encode(it)}") },
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable(
+                "code/{project}?cls={cls}",
+                arguments = listOf(
+                    navArgument("project") { type = NavType.StringType },
+                    navArgument("cls") { type = NavType.StringType; defaultValue = "" },
+                ),
+            ) { e ->
+                CodeScreen(
+                    e.arguments?.getString("project").orEmpty(),
+                    e.arguments?.getString("cls").orEmpty(),
+                ) { nav.popBackStack() }
             }
             composable("export") {
                 SourceScreen(
