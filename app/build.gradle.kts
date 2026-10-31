@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.odys.patcherjar"
+    namespace = "com.jartool.app"
     compileSdk = 34
     defaultConfig {
         applicationId = "com.odys.patcherjar"
