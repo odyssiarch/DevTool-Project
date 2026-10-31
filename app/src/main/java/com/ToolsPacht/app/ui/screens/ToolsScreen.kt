@@ -21,7 +21,7 @@ private val tools = listOf(
     ToolItem("source", "Lihat kode sumber", "jadx", "Decompile ke Java, lalu jelajahi kode dan resource", Icons.Outlined.Code),
     ToolItem("smali", "Edit JAR", "smali", "Edit Smali, lalu buat ulang JAR", Icons.Outlined.Edit),
     ToolItem("export", "Impor dan ekspor JAR", null, "Buka JAR dari penyimpanan, simpan hasil edit sebagai JAR baru", Icons.Outlined.Download),
-    ToolItem("compare", "Bandingkan JAR", null, "Bandingkan dua versi dan lihat class serta method yang berubah", Icons.Outlined.SwapVert),
+    ToolItem("compare", "Bandingkan JAR", null, "Bandingkan dua versi dan lihat class serta berkas yang berubah", Icons.Outlined.SwapVert),
     ToolItem("info", "Info JAR", null, "Daftar classes.dex, versi dex, jumlah class, dan API level", Icons.Outlined.Info),
 )
 

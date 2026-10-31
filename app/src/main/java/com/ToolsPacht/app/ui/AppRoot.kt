@@ -11,6 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -61,9 +63,40 @@ fun AppRoot() {
         },
     ) { pad ->
         NavHost(nav, startDestination = Dest.Tools.route, modifier = Modifier.padding(pad)) {
-            composable(Dest.Tools.route) { ToolsScreen(onOpen = { nav.navigate("tool/$it") }) }
-            composable(Dest.Projects.route) { ProjectsScreen() }
+            composable(Dest.Tools.route) {
+                ToolsScreen(onOpen = { id ->
+                    nav.navigate(
+                        when (id) {
+                            "smali" -> "edit"
+                            "info" -> "info"
+                            "compare" -> "compare"
+                            else -> "tool/$id"
+                        },
+                    )
+                })
+            }
+            composable(Dest.Projects.route) { ProjectsScreen(onOpen = { nav.navigate("project/$it?edit=true") }) }
             composable(Dest.Settings.route) { SettingsScreen() }
+            composable("edit") {
+                SourceScreen("Edit JAR", onBack = { nav.popBackStack() }, onPicked = { nav.navigate("project/$it?edit=true") })
+            }
+            composable("info") {
+                SourceScreen("Info JAR", onBack = { nav.popBackStack() }, onPicked = { nav.navigate("project/$it") })
+            }
+            composable("compare") { CompareScreen(onBack = { nav.popBackStack() }) }
+            composable(
+                "project/{name}?edit={edit}",
+                arguments = listOf(
+                    navArgument("name") { type = NavType.StringType },
+                    navArgument("edit") { type = NavType.BoolType; defaultValue = false },
+                ),
+            ) { e ->
+                ProjectScreen(
+                    name = e.arguments?.getString("name").orEmpty(),
+                    edit = e.arguments?.getBoolean("edit") ?: false,
+                    onBack = { nav.popBackStack() },
+                )
+            }
             composable("tool/{id}") { e ->
                 ToolPlaceholderScreen(e.arguments?.getString("id").orEmpty()) { nav.popBackStack() }
             }

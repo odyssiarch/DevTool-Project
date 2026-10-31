@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.jartool.app"
+    namespace = "com.odys.patcherjar"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.jartool.app"
+        applicationId = "com.odys.patcherjar"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -30,6 +30,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.navigation:navigation-compose:2.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Tahap berikutnya: mesin decompile dan recompile
     // implementation("<jadx-core>")      // dex -> Java
