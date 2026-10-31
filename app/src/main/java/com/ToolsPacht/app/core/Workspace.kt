@@ -20,6 +20,13 @@ object Workspace {
 
     fun jarOf(ctx: Context, project: String): File = File(File(root(ctx), project), "original.jar")
 
+    /** JAR hasil kerja bila ada (output.jar), kalau belum ada pakai original.jar. */
+    fun outputOf(ctx: Context, project: String): File {
+        val dir = File(root(ctx), project)
+        val out = File(dir, "output.jar")
+        return if (out.exists()) out else File(dir, "original.jar")
+    }
+
     fun importFile(ctx: Context, file: File): String =
         file.inputStream().use { importStream(ctx, file.name, it) }
 

@@ -16,17 +16,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.jartool.app.core.Workspace
-import com.jartool.app.core.formatSize
 import com.jartool.app.ui.theme.JarColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
-enum class PickerDialog { None, Framework, Projects }
+enum class PickerDialog { None, Projects }
 
-/** Pemilih sumber JAR: framework sistem, berkas dari penyimpanan, atau proyek yang sudah ada. */
+/** Pemilih sumber JAR: berkas dari penyimpanan atau proyek yang sudah ada. */
 class SourcePicker(private val ctx: Context, private val scope: CoroutineScope) {
     var onPicked: (String) -> Unit = {}
     var dialog by mutableStateOf(PickerDialog.None)
@@ -35,17 +33,16 @@ class SourcePicker(private val ctx: Context, private val scope: CoroutineScope) 
     var launcher: ManagedActivityResultLauncher<Array<String>, Uri?>? = null
 
     fun openFile() { launcher?.launch(arrayOf("*/*")) }
-    fun openFramework() { dialog = PickerDialog.Framework }
     fun openProjects() { dialog = PickerDialog.Projects }
     fun dismiss() { dialog = PickerDialog.None }
     fun choose(name: String) { dialog = PickerDialog.None; onPicked(name) }
 
-    private fun import(block: () -> String) {
+    fun importUri(uri: Uri) {
         dialog = PickerDialog.None
         scope.launch {
             busy = true
             try {
-                val name = withContext(Dispatchers.IO) { block() }
+                val name = withContext(Dispatchers.IO) { Workspace.importUri(ctx, uri) }
                 onPicked(name)
             } catch (e: Exception) {
                 error = e.message ?: "Gagal membuka berkas"
@@ -54,9 +51,6 @@ class SourcePicker(private val ctx: Context, private val scope: CoroutineScope) 
             }
         }
     }
-
-    fun importUri(uri: Uri) = import { Workspace.importUri(ctx, uri) }
-    fun importFile(f: File) = import { Workspace.importFile(ctx, f) }
 }
 
 @Composable
@@ -71,36 +65,32 @@ fun rememberSourcePicker(onPicked: (String) -> Unit): SourcePicker {
     return picker
 }
 
-private fun frameworkJars(): List<File> =
-    listOf("/system/framework", "/system_ext/framework")
-        .flatMap { dir ->
-            File(dir).listFiles { f -> f.isFile && f.name.endsWith(".jar") && f.canRead() }?.toList().orEmpty()
-        }
-        .sortedBy { it.name }
-
 @Composable
 fun SourcePickerDialogs(p: SourcePicker) {
     val ctx = LocalContext.current
-    when (p.dialog) {
-        PickerDialog.Framework -> {
-            val files = remember { frameworkJars() }
-            ListDialog(
-                title = "Framework sistem",
-                empty = "Tidak ada JAR yang bisa dibaca di /system/framework.",
-                items = files.map { it.name to formatSize(it.length()) },
-                onDismiss = p::dismiss,
-            ) { i -> p.importFile(files[i]) }
-        }
-        PickerDialog.Projects -> {
-            val names = remember { Workspace.projects(ctx).map { it.name } }
-            ListDialog(
-                title = "Proyek yang ada",
-                empty = "Belum ada proyek.",
-                items = names.map { it to "" },
-                onDismiss = p::dismiss,
-            ) { i -> p.choose(names[i]) }
-        }
-        PickerDialog.None -> {}
+    if (p.dialog == PickerDialog.Projects) {
+        val names = remember { Workspace.projects(ctx).map { it.name } }
+        AlertDialog(
+            onDismissRequest = p::dismiss,
+            containerColor = JarColors.SurfaceHigh,
+            confirmButton = { TextButton(onClick = p::dismiss) { Text("Tutup") } },
+            title = { Text("Proyek yang ada") },
+            text = {
+                if (names.isEmpty()) {
+                    Text("Belum ada proyek.", color = JarColors.TextMuted)
+                } else {
+                    LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                        itemsIndexed(names) { _, n ->
+                            ListItem(
+                                headlineContent = { Text(n) },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                modifier = Modifier.clickable { p.choose(n) },
+                            )
+                        }
+                    }
+                }
+            },
+        )
     }
 
     if (p.busy) {
@@ -121,36 +111,4 @@ fun SourcePickerDialogs(p: SourcePicker) {
             text = { Text(msg) },
         )
     }
-}
-
-@Composable
-private fun ListDialog(
-    title: String,
-    empty: String,
-    items: List<Pair<String, String>>,
-    onDismiss: () -> Unit,
-    onClick: (Int) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = JarColors.SurfaceHigh,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } },
-        title = { Text(title) },
-        text = {
-            if (items.isEmpty()) {
-                Text(empty, color = JarColors.TextMuted)
-            } else {
-                LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    itemsIndexed(items) { i, item ->
-                        ListItem(
-                            headlineContent = { Text(item.first) },
-                            supportingContent = { if (item.second.isNotEmpty()) Text(item.second) },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { onClick(i) },
-                        )
-                    }
-                }
-            }
-        },
-    )
 }

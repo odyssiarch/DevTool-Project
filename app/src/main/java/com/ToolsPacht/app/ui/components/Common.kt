@@ -74,3 +74,19 @@ fun SummaryRow(label: String, value: String) {
         Text(value, color = JarColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+@Composable
+fun DetailRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconTile(icon)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = JarColors.TextMuted)
+        }
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = JarColors.TextMuted)
+    }
+}

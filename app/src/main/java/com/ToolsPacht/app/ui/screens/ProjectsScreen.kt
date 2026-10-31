@@ -2,8 +2,8 @@ package com.jartool.app.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Folder
@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jartool.app.core.Workspace
 import com.jartool.app.core.formatSize
@@ -27,9 +28,9 @@ fun ProjectsScreen(onOpen: (String) -> Unit) {
     var toDelete by remember { mutableStateOf<File?>(null) }
     val picker = rememberSourcePicker { onOpen(it) }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -39,19 +40,34 @@ fun ProjectsScreen(onOpen: (String) -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = JarColors.Blue, contentColor = JarColors.Black),
             ) { Text("Buka JAR") }
         }
-        if (projects.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text("Belum ada proyek. Buka berkas JAR untuk membuat proyek pertama.", color = JarColors.TextMuted)
-            }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(projects, key = { it.name }) { dir ->
-                    JarCard {
+        Box(Modifier.padding(horizontal = 16.dp)) {
+            JarCard {
+                Text(
+                    "Proyek: ${projects.size}",
+                    color = JarColors.TextMuted,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+                HorizontalDivider(color = JarColors.Outline, modifier = Modifier.padding(horizontal = 16.dp))
+                if (projects.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 28.dp, horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        IconTile(Icons.Outlined.Folder, size = 64.dp)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Belum ada file terbaru. Pilih alat untuk memulai.",
+                            color = JarColors.TextMuted,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                } else {
+                    projects.forEachIndexed { i, dir ->
+                        if (i > 0) RowDivider()
                         Row(
-                            Modifier.clickable { onOpen(dir.name) }.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+                            Modifier.fillMaxWidth().clickable { onOpen(dir.name) }
+                                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconTile(Icons.Outlined.Folder)
@@ -72,6 +88,7 @@ fun ProjectsScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
+        Spacer(Modifier.height(24.dp))
     }
 
     SourcePickerDialogs(picker)

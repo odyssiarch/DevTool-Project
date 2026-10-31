@@ -124,12 +124,10 @@ private fun PackageCard(title: String, project: String?, picker: SourcePicker) {
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = picker::openFramework) { Text("Framework sistem") }
             TextButton(onClick = picker::openFile) { Text("File JAR") }
-        }
-        Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
             TextButton(onClick = picker::openProjects) { Text("Proyek yang ada") }
         }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

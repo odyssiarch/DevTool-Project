@@ -18,9 +18,9 @@ import com.jartool.app.ui.theme.JarColors
 data class ToolItem(val id: String, val title: String, val tag: String?, val desc: String, val icon: ImageVector)
 
 private val tools = listOf(
-    ToolItem("source", "Lihat kode sumber", "jadx", "Decompile ke Java, lalu jelajahi kode dan resource", Icons.Outlined.Code),
+    ToolItem("source", "Lihat kode sumber", "jadx", "Jelajahi paket dan class dari JAR", Icons.Outlined.Code),
     ToolItem("smali", "Edit JAR", "smali", "Edit Smali, lalu buat ulang JAR", Icons.Outlined.Edit),
-    ToolItem("export", "Impor dan ekspor JAR", null, "Buka JAR dari penyimpanan, simpan hasil edit sebagai JAR baru", Icons.Outlined.Download),
+    ToolItem("export", "Ekspor JAR / DEX", null, "Simpan JAR atau classes.dex dari proyek ke penyimpanan", Icons.Outlined.Download),
     ToolItem("compare", "Bandingkan JAR", null, "Bandingkan dua versi dan lihat class serta berkas yang berubah", Icons.Outlined.SwapVert),
     ToolItem("info", "Info JAR", null, "Daftar classes.dex, versi dex, jumlah class, dan API level", Icons.Outlined.Info),
 )

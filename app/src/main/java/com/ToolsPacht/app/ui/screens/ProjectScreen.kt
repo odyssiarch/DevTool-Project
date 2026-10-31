@@ -63,7 +63,7 @@ fun ProjectScreen(name: String, edit: Boolean, onBack: () -> Unit) {
                             Column {
                                 Text(d.name, style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
                                 Text(
-                                    "dex ${d.version}, ${d.classes} class, ${formatSize(d.size)}",
+                                    d.describe(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = JarColors.TextMuted,
                                 )

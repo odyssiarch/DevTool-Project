@@ -70,6 +70,8 @@ fun AppRoot() {
                             "smali" -> "edit"
                             "info" -> "info"
                             "compare" -> "compare"
+                            "source" -> "source"
+                            "export" -> "export"
                             else -> "tool/$id"
                         },
                     )
@@ -96,6 +98,23 @@ fun AppRoot() {
                     edit = e.arguments?.getBoolean("edit") ?: false,
                     onBack = { nav.popBackStack() },
                 )
+            }
+            composable("source") {
+                DecompileScreen(onBack = { nav.popBackStack() }, onPicked = { nav.navigate("browse/$it") })
+            }
+            composable("browse/{name}") { e ->
+                BrowseScreen(e.arguments?.getString("name").orEmpty()) { nav.popBackStack() }
+            }
+            composable("export") {
+                SourceScreen(
+                    "Ekspor JAR / DEX",
+                    onBack = { nav.popBackStack() },
+                    onPicked = { nav.navigate("exportproject/$it") },
+                    description = "Simpan JAR atau classes.dex dari proyek ke penyimpanan",
+                )
+            }
+            composable("exportproject/{name}") { e ->
+                ExportScreen(e.arguments?.getString("name").orEmpty()) { nav.popBackStack() }
             }
             composable("tool/{id}") { e ->
                 ToolPlaceholderScreen(e.arguments?.getString("id").orEmpty()) { nav.popBackStack() }
