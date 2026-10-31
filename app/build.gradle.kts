@@ -44,4 +44,8 @@ dependencies {
     // Dekompilasi dex ke Java (jadx 1.5.2 ke atas sudah mengenal kontainer dex 041)
     implementation("io.github.skylot:jadx-core:1.5.5")
     implementation("io.github.skylot:jadx-dex-input:1.5.5")
+
+    // Smali dan baksmali untuk bongkar dan rakit ulang dex
+    implementation("com.android.tools.smali:smali:3.0.9")
+    implementation("com.android.tools.smali:smali-baksmali:3.0.9")
 }

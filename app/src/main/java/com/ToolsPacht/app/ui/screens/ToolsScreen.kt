@@ -32,7 +32,7 @@ fun ToolsScreen(onOpen: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Text("Alat JAR", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
+            Text("JarPatcher", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
             Spacer(Modifier.height(8.dp))
         }
         items(tools, key = { it.id }) { ToolCard(it) { onOpen(it.id) } }

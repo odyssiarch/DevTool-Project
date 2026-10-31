@@ -80,16 +80,7 @@ fun ProjectScreen(name: String, edit: Boolean, onBack: () -> Unit) {
                     }
                 }
                 if (edit) {
-                    item {
-                        JarCard {
-                            Text(
-                                "Langkah berikutnya: bongkar ke Smali, edit, lalu susun ulang JAR. Fitur ini menyusul.",
-                                color = JarColors.TextMuted,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        }
-                    }
+                    item { SmaliActions(name) }
                 }
             }
         }
