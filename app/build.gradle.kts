@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ToolsPacht.app"
+    namespace = "com.jartool.app"
     compileSdk = 34
     defaultConfig {
         applicationId = "com.odys.patcherjar"
@@ -28,12 +28,8 @@ android {
                 "META-INF/AL2.0", "META-INF/LGPL2.1",
             )
         }
-        jniLibs {
-            keepDebugSymbols.add("**/libandroidx.graphics.path.so")
-        }
     }
 }
-
 
 dependencies {
     val bom = platform("androidx.compose:compose-bom:2024.09.00")

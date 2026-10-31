@@ -41,7 +41,7 @@ object JarAnalyzer {
         return JarInfo(project, jar.length(), entries, dex)
     }
 
-    private fun dexFiles(ctx: Context, project: String): List<File> {
+    fun dexFiles(ctx: Context, project: String): List<File> {
         val dir = dexDir(ctx, project)
         if (dir.listFiles().isNullOrEmpty()) JarPackager.extractDex(Workspace.jarOf(ctx, project), dir)
         return dir.listFiles()?.filter { it.isFile }?.sortedBy { it.name }.orEmpty()
