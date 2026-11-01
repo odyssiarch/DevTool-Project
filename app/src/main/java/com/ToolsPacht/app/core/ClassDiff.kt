@@ -3,10 +3,10 @@ package com.jartool.app.core
 import android.content.Context
 import com.android.tools.smali.baksmali.Adaptors.ClassDefinition
 import com.android.tools.smali.baksmali.BaksmaliOptions
+import com.android.tools.smali.baksmali.formatter.BaksmaliWriter
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile
 import com.android.tools.smali.dexlib2.iface.ClassDef
-import com.android.tools.smali.util.IndentingWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -42,7 +42,7 @@ object ClassDiffEngine {
 
     private fun smali(cd: ClassDef, opts: BaksmaliOptions): String {
         val sw = StringWriter()
-        val w = IndentingWriter(sw)
+        val w = BaksmaliWriter(sw, cd.type)
         ClassDefinition(opts, cd).writeTo(w)
         w.flush()
         return sw.toString()
