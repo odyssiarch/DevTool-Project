@@ -86,7 +86,41 @@ fun AppRoot() {
             composable("info") {
                 SourceScreen("Info JAR", onBack = { nav.popBackStack() }, onPicked = { nav.navigate("project/$it") })
             }
-            composable("compare") { CompareScreen(onBack = { nav.popBackStack() }) }
+            composable("compare") {
+                CompareScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenDiff = { nav.navigate("diffclasses") },
+                )
+            }
+            composable("diffclasses") {
+                ClassDiffScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenClass = { nav.navigate("diffmethods?cls=${Uri.encode(it)}") },
+                )
+            }
+            composable(
+                "diffmethods?cls={cls}",
+                arguments = listOf(navArgument("cls") { type = NavType.StringType; defaultValue = "" }),
+            ) { e ->
+                val cls = e.arguments?.getString("cls").orEmpty()
+                MethodListScreen(
+                    cls,
+                    onBack = { nav.popBackStack() },
+                    onOpenMethod = { i -> nav.navigate("diffmethod?cls=${Uri.encode(cls)}&i=$i") },
+                )
+            }
+            composable(
+                "diffmethod?cls={cls}&i={i}",
+                arguments = listOf(
+                    navArgument("cls") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("i") { type = NavType.IntType; defaultValue = 0 },
+                ),
+            ) { e ->
+                MethodDetailScreen(
+                    e.arguments?.getString("cls").orEmpty(),
+                    e.arguments?.getInt("i") ?: 0,
+                ) { nav.popBackStack() }
+            }
             composable(
                 "project/{name}?edit={edit}",
                 arguments = listOf(

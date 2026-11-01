@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.jartool.app.core.ClassDiffEngine
 import com.jartool.app.core.CompareResult
+import com.jartool.app.core.DiffSession
 import com.jartool.app.core.JarComparer
 import com.jartool.app.core.formatSize
 import com.jartool.app.ui.components.*
@@ -26,7 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun CompareScreen(onBack: () -> Unit) {
+fun CompareScreen(onBack: () -> Unit, onOpenDiff: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var oldP by rememberSaveable { mutableStateOf<String?>(null) }
@@ -53,6 +55,37 @@ fun CompareScreen(onBack: () -> Unit) {
                 error = e.message ?: "Perbandingan gagal"
             } finally {
                 running = false
+            }
+        }
+    }
+
+    var diffBusy by remember { mutableStateOf(false) }
+    var diffMsg by remember { mutableStateOf<String?>(null) }
+    var diffErr by remember { mutableStateOf<String?>(null) }
+
+    fun startDiff() {
+        val a = oldP ?: return
+        val b = newP ?: return
+        diffBusy = true
+        diffErr = null
+        diffMsg = "Membaca JAR lama..."
+        scope.launch {
+            try {
+                val oi = ClassDiffEngine.loadIndex(ctx, a)
+                diffMsg = "Membaca JAR baru..."
+                val ni = ClassDiffEngine.loadIndex(ctx, b)
+                val d = ClassDiffEngine.diff(oi, ni) { n, t -> diffMsg = "Membandingkan class $n / $t" }
+                DiffSession.set(a, b, oi, ni, d)
+                diffMsg = null
+                onOpenDiff()
+            } catch (e: OutOfMemoryError) {
+                diffErr = "Memori tidak cukup untuk membandingkan JAR sebesar ini"
+                diffMsg = null
+            } catch (e: Exception) {
+                diffErr = e.message ?: "Perbandingan class gagal"
+                diffMsg = null
+            } finally {
+                diffBusy = false
             }
         }
     }
@@ -99,6 +132,18 @@ fun CompareScreen(onBack: () -> Unit) {
                     Text(if (running) "Membandingkan..." else "Mulai perbandingan")
                 }
             }
+            item {
+                OutlinedButton(
+                    onClick = { startDiff() },
+                    enabled = oldP != null && newP != null && !running && !diffBusy,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = JarColors.Blue),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                ) {
+                    Text(diffMsg ?: "Lihat class dan method yang berbeda")
+                }
+            }
+            diffErr?.let { msg -> item { Text(msg, color = MaterialTheme.colorScheme.error) } }
             if (err != null) item { Text(err, color = MaterialTheme.colorScheme.error) }
             if (r != null) resultItems(r)
         }

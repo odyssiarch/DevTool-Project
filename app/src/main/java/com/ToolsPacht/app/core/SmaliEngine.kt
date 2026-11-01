@@ -74,7 +74,7 @@ object SmaliEngine : DexEngine {
      * disamakan dengan ukuran berkas. Semua offset di 041 dihitung dari awal berkas, jadi
      * data dex tersebut tetap terbaca benar.
      */
-    private fun dexView(bytes: ByteArray, start: Int, version: String): ByteArray {
+    fun dexView(bytes: ByteArray, start: Int, version: String): ByteArray {
         if (version != "041") return bytes
         val copy = bytes.copyOf()
         System.arraycopy(bytes, start, copy, 0, 0x78)
@@ -212,6 +212,13 @@ object SmaliEngine : DexEngine {
             val output = File(Workspace.jarOf(ctx, project).parentFile, "output.jar")
             JarPackager.repack(jar, newDex, output)
             build.deleteRecursively()
+            log("Memeriksa hasil rakitan terhadap JAR asli...")
+            val report = JarVerifier.verify(jar, output)
+            report.items.forEach { log((if (it.ok) "✔ " else "✘ ") + it.text) }
+            log(
+                if (report.ok) "Verifikasi lulus: struktur JAR sama dengan aslinya."
+                else "PERINGATAN: ada yang tidak cocok dengan JAR asli (tanda ✘). Jangan dipasang dulu.",
+            )
             log("Selesai: output.jar (${formatSize(output.length())}). Bisa diekspor lewat menu Ekspor JAR / DEX.")
             output
         }
