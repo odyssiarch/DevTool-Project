@@ -31,12 +31,17 @@ class DeepResult(
     val newFiles: Map<String, File>,
     val changes: List<ClassChange>,
     val total: Int,
+    val oldName: String,
+    val newName: String,
 )
 
 /** kind: ' ' sama, '+' baru, '-' hilang, '~' penanda baris yang dilewati. */
 class DiffLine(val kind: Char, val text: String)
 
 object SmaliDiff {
+
+    // Hasil rakit ulang kadang menambah nilai awal bawaan (= false, = 0x0, = null) pada field. Itu bukan perubahan.
+    private val nilaiBawaan = Regex(" = (false|null|0x0[a-z]?|0x0L|0\\.0f?|'\\\\u0000')$")
 
     private class Parsed(val methods: LinkedHashMap<String, String>, val headers: HashMap<String, String>, val rest: String)
 
@@ -63,7 +68,10 @@ object SmaliDiff {
                 i = j + 1
             } else {
                 // baris kosong di antara method tidak dihitung, supaya tambah/hapus method tidak dianggap bagian lain berubah
-                if (l.isNotBlank()) rest.append(l).append('\n')
+                if (l.isNotBlank()) {
+                    val baris = if (l.startsWith(".field ")) nilaiBawaan.replace(l.trimEnd(), "") else l
+                    rest.append(baris).append('\n')
+                }
                 i++
             }
         }
@@ -105,7 +113,14 @@ object SmaliDiff {
         return map
     }
 
-    suspend fun compare(ctx: Context, oldProject: String, newProject: String, log: (String) -> Unit): DeepResult =
+    suspend fun compare(
+        ctx: Context,
+        oldProject: String,
+        newProject: String,
+        oldName: String,
+        newName: String,
+        log: (String) -> Unit,
+    ): DeepResult =
         withContext(Dispatchers.IO) {
             val a = smaliFiles(ctx, oldProject, "lama", log)
             val b = smaliFiles(ctx, newProject, "baru", log)
@@ -136,7 +151,7 @@ object SmaliDiff {
                 compareByDescending<ClassChange> { it.added + it.removed + it.changed }.thenBy { it.key },
             )
             log("Selesai: ${changes.size} class berubah dari ${a.size}")
-            DeepResult(a, b, changes, a.size)
+            DeepResult(a, b, changes, a.size, oldName, newName)
         }
 
     /** Daftar method yang berbeda di satu class. */
@@ -221,6 +236,12 @@ object SmaliDiff {
         for (i in ea until a.size) out.add(DiffLine(' ', a[i]))
         return out
     }
+
+    /** Isi versi lama saja: baris sama dan baris yang hanya ada di lama. */
+    fun sisiLama(lines: List<DiffLine>): List<DiffLine> = lines.filter { it.kind != '+' }
+
+    /** Isi versi baru saja: baris sama dan baris yang hanya ada di baru. */
+    fun sisiBaru(lines: List<DiffLine>): List<DiffLine> = lines.filter { it.kind != '-' }
 
     /** Sisakan baris yang berubah ditambah [context] baris di sekitarnya. */
     fun compact(lines: List<DiffLine>, context: Int = 2): List<DiffLine> {

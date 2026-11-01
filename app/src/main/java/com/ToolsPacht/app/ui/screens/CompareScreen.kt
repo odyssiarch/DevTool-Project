@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.jartool.app.core.ClassChange
 import com.jartool.app.core.CompareResult
 import com.jartool.app.core.DeepResult
+import com.jartool.app.core.DiffLine
 import com.jartool.app.core.JarComparer
 import com.jartool.app.core.JarVerifier
 import com.jartool.app.core.MethodChange
@@ -45,6 +46,10 @@ private val Hijau = Color(0xFF5BD98C)
 private val Kuning = Color(0xFFFFC857)
 private val Merah = Color(0xFFFF6B6B)
 
+/** Nama JAR yang ditampilkan: nama proyek (dari nama berkas yang dipilih), diberi .jar kalau belum ada. */
+private fun jarName(project: String): String =
+    if (project.endsWith(".jar", ignoreCase = true)) project else "$project.jar"
+
 @Composable
 fun CompareScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -54,6 +59,9 @@ fun CompareScreen(onBack: () -> Unit) {
     var code by rememberSaveable { mutableStateOf(false) }
     var res by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
+    var hideOther by rememberSaveable { mutableStateOf(true) }
+    var nameOld by rememberSaveable { mutableStateOf("Versi lama") }
+    var nameNew by rememberSaveable { mutableStateOf("Versi baru") }
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<CompareResult?>(null) }
@@ -77,10 +85,18 @@ fun CompareScreen(onBack: () -> Unit) {
     fun start() {
         val a = oldP ?: return
         val b = newP ?: return
+        var na = jarName(a)
+        var nb = jarName(b)
+        if (na == nb) {
+            na = "$na (lama)"
+            nb = "$nb (baru)"
+        }
         running = true
         error = null
         status = ""
         resetResult()
+        nameOld = na
+        nameNew = nb
         scope.launch {
             try {
                 checks = withContext(Dispatchers.IO) {
@@ -91,7 +107,7 @@ fun CompareScreen(onBack: () -> Unit) {
                     }
                 }
                 result = withContext(Dispatchers.IO) { JarComparer.compare(ctx, a, b, code, res) }
-                if (code) deep = SmaliDiff.compare(ctx, a, b) { status = it }
+                if (code) deep = SmaliDiff.compare(ctx, a, b, na, nb) { status = it }
             } catch (e: Exception) {
                 error = e.message ?: "Perbandingan gagal"
             } finally {
@@ -112,7 +128,7 @@ fun CompareScreen(onBack: () -> Unit) {
     }
 
     if (d != null && k != null && m != null) {
-        MethodDiffScreen(k, m) { selMethod = null }
+        MethodDiffScreen(k, m, d.oldName, d.newName) { selMethod = null }
     } else if (d != null && k != null) {
         ClassDetailScreen(d, k, onBack = { selClass = null }, onOpen = { selMethod = it })
     } else {
@@ -135,7 +151,7 @@ fun CompareScreen(onBack: () -> Unit) {
                             Spacer(Modifier.height(4.dp))
                             OptionRow("Bandingkan kode", code) { code = it }
                             Text(
-                                "Sampai daftar class dan method yang berubah, lengkap dengan isi Smali-nya (butuh beberapa menit).",
+                                "Sampai daftar class dan method yang berbeda, lengkap dengan isi Smali-nya (butuh beberapa menit).",
                                 color = JarColors.TextMuted,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(start = 48.dp, bottom = 4.dp),
@@ -167,9 +183,11 @@ fun CompareScreen(onBack: () -> Unit) {
                     if (status.isNotEmpty()) item { Text(status, color = JarColors.TextMuted, style = MaterialTheme.typography.bodySmall) }
                 }
                 if (err != null) item { Text(err, color = MaterialTheme.colorScheme.error) }
-                if (checks.isNotEmpty()) checksItems(checks)
-                if (r != null) resultItems(r)
-                if (d != null) deepItems(d, query, { query = it }, { selClass = it })
+                if (checks.isNotEmpty()) checksItems(checks, nameOld, nameNew)
+                if (r != null) resultItems(r, nameOld, nameNew)
+                if (d != null) {
+                    deepItems(d, query, { query = it }, hideOther, { hideOther = it }, { selClass = it })
+                }
             }
         }
     }
@@ -187,9 +205,9 @@ private fun PackageCard(title: String, project: String?, picker: SourcePicker) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    project ?: "Pilih JAR yang ingin dibandingkan.",
+                    if (project != null) jarName(project) else "Pilih JAR yang ingin dibandingkan.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = JarColors.TextMuted,
+                    color = if (project != null) JarColors.TextPrimary else JarColors.TextMuted,
                 )
             }
         }
@@ -226,14 +244,14 @@ private fun levelColor(l: VerifyLevel): Color = when (l) {
     VerifyLevel.FAIL -> Merah
 }
 
-private fun LazyListScope.checksItems(list: List<VerifyCheck>) {
+private fun LazyListScope.checksItems(list: List<VerifyCheck>, nameOld: String, nameNew: String) {
     item {
         JarCard {
             Column(Modifier.padding(16.dp)) {
                 Text("Pemeriksaan struktur JAR", style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Cara JAR baru disimpan, dibanding JAR lama.",
+                    "Cara $nameNew disimpan, dibanding $nameOld.",
                     style = MaterialTheme.typography.bodySmall,
                     color = JarColors.TextMuted,
                 )
@@ -251,28 +269,40 @@ private fun LazyListScope.checksItems(list: List<VerifyCheck>) {
     }
 }
 
-private fun LazyListScope.resultItems(r: CompareResult) {
+@Composable
+private fun JarSummary(name: String, warna: Color, size: String, entries: String, dex: String, versi: String, classes: String) {
+    Column(Modifier.padding(top = 10.dp)) {
+        Text(name, style = MaterialTheme.typography.titleSmall, color = warna)
+        Text("Ukuran $size, $entries berkas", style = MaterialTheme.typography.bodyMedium, color = JarColors.TextPrimary)
+        Text("$dex berkas dex (versi $versi), $classes class", style = MaterialTheme.typography.bodyMedium, color = JarColors.TextPrimary)
+    }
+}
+
+private fun LazyListScope.resultItems(r: CompareResult, nameOld: String, nameNew: String) {
     item {
         JarCard {
             Column(Modifier.padding(16.dp)) {
                 Text("Ringkasan", style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
-                SummaryRow("Ukuran", "${formatSize(r.oldInfo.size)} → ${formatSize(r.newInfo.size)}")
-                SummaryRow("Jumlah berkas", "${r.oldInfo.entries} → ${r.newInfo.entries}")
-                SummaryRow("Berkas dex", "${r.oldInfo.dex.size} → ${r.newInfo.dex.size}")
-                SummaryRow(
-                    "Versi dex",
-                    "${r.oldInfo.dex.map { it.version }.distinct().joinToString()} → " +
-                        r.newInfo.dex.map { it.version }.distinct().joinToString(),
+                JarSummary(
+                    nameOld, Merah,
+                    formatSize(r.oldInfo.size), "${r.oldInfo.entries}",
+                    "${r.oldInfo.dex.size}", r.oldInfo.dex.map { it.version }.distinct().joinToString(),
+                    "${r.oldInfo.totalClasses}",
                 )
-                SummaryRow("Jumlah class", "${r.oldInfo.totalClasses} → ${r.newInfo.totalClasses}")
+                JarSummary(
+                    nameNew, Hijau,
+                    formatSize(r.newInfo.size), "${r.newInfo.entries}",
+                    "${r.newInfo.dex.size}", r.newInfo.dex.map { it.version }.distinct().joinToString(),
+                    "${r.newInfo.totalClasses}",
+                )
             }
         }
     }
-    section("Class baru", r.addedClasses)
-    section("Class dihapus", r.removedClasses)
-    section("Berkas baru", r.addedFiles)
-    section("Berkas dihapus", r.removedFiles)
-    section("Berkas berubah", r.changedFiles)
+    section("Class hanya ada di $nameNew", r.addedClasses)
+    section("Class hanya ada di $nameOld", r.removedClasses)
+    section("Berkas hanya ada di $nameNew", r.addedFiles)
+    section("Berkas hanya ada di $nameOld", r.removedFiles)
+    section("Berkas yang isinya berbeda", r.changedFiles)
 }
 
 private fun LazyListScope.section(title: String, list: List<String>?) {
@@ -287,20 +317,53 @@ private fun LazyListScope.section(title: String, list: List<String>?) {
     if (list.size > 300) item { Text("dan ${list.size - 300} lainnya", color = JarColors.TextMuted) }
 }
 
-// ---------- daftar class yang berubah ----------
+// ---------- daftar class yang berbeda ----------
 
 private fun LazyListScope.deepItems(
     d: DeepResult,
     query: String,
     onQuery: (String) -> Unit,
+    hideOther: Boolean,
+    onHideOther: (Boolean) -> Unit,
     onOpen: (String) -> Unit,
 ) {
+    val dasar = d.changes.filter { !hideOther || it.added + it.removed + it.changed > 0 }
+    val shown = dasar.filter { query.isBlank() || it.key.contains(query.trim(), ignoreCase = true) }
     item {
-        Text(
-            "Class berubah (${d.changes.size} dari ${d.total})",
-            style = MaterialTheme.typography.titleMedium,
-            color = JarColors.TextPrimary,
-        )
+        Column {
+            Text(
+                "Class dan method yang berbeda (${dasar.size})",
+                style = MaterialTheme.typography.titleMedium,
+                color = JarColors.TextPrimary,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "Diperiksa ${d.total} class dari ${d.oldName}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = JarColors.TextMuted,
+            )
+        }
+    }
+    item {
+        Row(
+            Modifier.fillMaxWidth().clickable { onHideOther(!hideOther) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = hideOther,
+                onCheckedChange = onHideOther,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = JarColors.Blue,
+                    checkmarkColor = JarColors.Black,
+                    uncheckedColor = JarColors.TextMuted,
+                ),
+            )
+            Text(
+                "Sembunyikan class yang hanya beda field atau header",
+                color = JarColors.TextPrimary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
     item {
         OutlinedTextField(
@@ -311,39 +374,53 @@ private fun LazyListScope.deepItems(
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    val shown = d.changes.filter { query.isBlank() || it.key.contains(query.trim(), ignoreCase = true) }
     if (shown.isEmpty()) item { Text("Tidak ada class yang cocok.", color = JarColors.TextMuted) }
-    items(shown.take(200)) { c -> ClassRow(c) { onOpen(c.key) } }
+    items(shown.take(200)) { c -> ClassRow(c, d.oldName, d.newName) { onOpen(c.key) } }
     if (shown.size > 200) {
         item { Text("dan ${shown.size - 200} lainnya. Ketik nama class untuk mempersempit.", color = JarColors.TextMuted) }
     }
 }
 
 @Composable
-private fun ClassRow(c: ClassChange, onClick: () -> Unit) {
-    val ringkas = buildString {
+private fun ClassRow(c: ClassChange, nameOld: String, nameNew: String, onClick: () -> Unit) {
+    // di JAR lama: method yang berubah dan yang hanya ada di lama (dihapus)
+    val lama = buildString {
         if (c.changed > 0) append("${c.changed} method berubah")
-        if (c.added > 0) append(if (isEmpty()) "" else ", ").append("${c.added} baru")
-        if (c.removed > 0) append(if (isEmpty()) "" else ", ").append("${c.removed} dihapus")
-        if (c.other) append(if (isEmpty()) "" else ", ").append("bagian lain berubah")
-        if (isEmpty()) append("berubah")
+        if (c.removed > 0) append(if (isEmpty()) "" else ", ").append("${c.removed} method hanya di sini")
+        if (isEmpty()) append("tidak ada method yang berbeda")
+    }
+    // di JAR baru: method yang berubah dan yang hanya ada di baru
+    val baru = buildString {
+        if (c.changed > 0) append("${c.changed} method berubah")
+        if (c.added > 0) append(if (isEmpty()) "" else ", ").append("${c.added} method hanya di sini")
+        if (isEmpty()) append("tidak ada method yang berbeda")
     }
     JarCard {
         Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(14.dp)) {
             Text(c.simpleName, style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
             Text(c.dotted, style = MaterialTheme.typography.bodySmall, color = JarColors.TextMuted)
+            Spacer(Modifier.height(6.dp))
+            Text(nameOld, style = MaterialTheme.typography.labelLarge, color = Merah)
+            Text(lama, style = MaterialTheme.typography.bodyMedium, color = JarColors.TextPrimary)
             Spacer(Modifier.height(4.dp))
-            Text(ringkas, style = MaterialTheme.typography.bodyMedium, color = Kuning)
+            Text(nameNew, style = MaterialTheme.typography.labelLarge, color = Hijau)
+            Text(baru, style = MaterialTheme.typography.bodyMedium, color = JarColors.TextPrimary)
+            if (c.other) {
+                Spacer(Modifier.height(4.dp))
+                Text("Field atau header class juga berbeda", style = MaterialTheme.typography.bodySmall, color = Kuning)
+            }
         }
     }
 }
 
-// ---------- daftar method di satu class ----------
+// ---------- daftar method di satu class, dipisah per JAR ----------
 
 @Composable
 private fun ClassDetailScreen(d: DeepResult, key: String, onBack: () -> Unit, onOpen: (MethodChange) -> Unit) {
     val methods = remember(key) { SmaliDiff.methodsOf(d, key) }
     val title = key.removeSuffix(".smali").substringAfterLast('/')
+    val dilama = methods.filter { it.kind != "BARU" }
+    val dibaru = methods.filter { it.kind != "DIHAPUS" }
     Column(Modifier.fillMaxSize()) {
         JarTopBar(title, onBack)
         LazyColumn(
@@ -358,14 +435,26 @@ private fun ClassDetailScreen(d: DeepResult, key: String, onBack: () -> Unit, on
                 )
             }
             item {
+                Text(d.oldName, style = MaterialTheme.typography.titleMedium, color = Merah)
                 Text(
-                    "Method yang berbeda (${methods.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = JarColors.TextPrimary,
+                    "Class ini, method yang berbeda (${dilama.size})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = JarColors.TextMuted,
                 )
             }
-            if (methods.isEmpty()) item { Text("Tidak ada method yang berbeda.", color = JarColors.TextMuted) }
-            items(methods) { m -> MethodRow(m) { onOpen(m) } }
+            if (dilama.isEmpty()) item { Text("Tidak ada.", color = JarColors.TextMuted) }
+            items(dilama) { m -> MethodRow(m, lamaSisi = true) { onOpen(m) } }
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(d.newName, style = MaterialTheme.typography.titleMedium, color = Hijau)
+                Text(
+                    "Class ini, method yang berbeda (${dibaru.size})",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = JarColors.TextMuted,
+                )
+            }
+            if (dibaru.isEmpty()) item { Text("Tidak ada.", color = JarColors.TextMuted) }
+            items(dibaru) { m -> MethodRow(m, lamaSisi = false) { onOpen(m) } }
         }
     }
 }
@@ -376,11 +465,17 @@ private fun kindColor(kind: String): Color = when (kind) {
     else -> Kuning
 }
 
+private fun kindText(kind: String, lamaSisi: Boolean): String = when (kind) {
+    "BARU" -> "Hanya ada di sini"
+    "DIHAPUS" -> if (lamaSisi) "Hanya ada di sini" else "Dihapus"
+    else -> "Isinya berbeda"
+}
+
 @Composable
-private fun MethodRow(m: MethodChange, onClick: () -> Unit) {
+private fun MethodRow(m: MethodChange, lamaSisi: Boolean, onClick: () -> Unit) {
     JarCard {
         Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(14.dp)) {
-            Text(m.kind, style = MaterialTheme.typography.labelMedium, color = kindColor(m.kind))
+            Text(kindText(m.kind, lamaSisi), style = MaterialTheme.typography.labelMedium, color = kindColor(m.kind))
             Spacer(Modifier.height(2.dp))
             Text(
                 m.header,
@@ -392,16 +487,46 @@ private fun MethodRow(m: MethodChange, onClick: () -> Unit) {
     }
 }
 
-// ---------- isi Smali: selisih per baris ----------
+// ---------- isi Smali: dua JAR dipisah ----------
 
 @Composable
-private fun MethodDiffScreen(classKey: String, m: MethodChange, onBack: () -> Unit) {
+private fun CodeBlock(lines: List<DiffLine>) {
+    Column(Modifier.horizontalScroll(rememberScrollState())) {
+        lines.forEach { l ->
+            val awal = when (l.kind) {
+                '+' -> "+ "
+                '-' -> "- "
+                else -> "  "
+            }
+            val warna = when (l.kind) {
+                '+' -> Hijau
+                '-' -> Merah
+                else -> JarColors.TextMuted
+            }
+            Text(
+                awal + l.text,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                softWrap = false,
+                color = warna,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MethodDiffScreen(classKey: String, m: MethodChange, nameOld: String, nameNew: String, onBack: () -> Unit) {
     var full by remember { mutableStateOf(false) }
     val lines = remember(m) { SmaliDiff.lineDiff(m.oldText, m.newText) }
-    val shown = remember(m, full) { if (full) lines else SmaliDiff.compact(lines, 2) }
+    val sisiLama = remember(m, full) {
+        val s = SmaliDiff.sisiLama(lines)
+        if (full) s else SmaliDiff.compact(s, 2)
+    }
+    val sisiBaru = remember(m, full) {
+        val s = SmaliDiff.sisiBaru(lines)
+        if (full) s else SmaliDiff.compact(s, 2)
+    }
     val clipboard = LocalClipboardManager.current
-    val plus = lines.count { it.kind == '+' }
-    val minus = lines.count { it.kind == '-' }
     val title = classKey.removeSuffix(".smali").substringAfterLast('/')
     Column(Modifier.fillMaxSize()) {
         JarTopBar(title, onBack)
@@ -413,44 +538,43 @@ private fun MethodDiffScreen(classKey: String, m: MethodChange, onBack: () -> Un
                 Text(m.header, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = JarColors.TextPrimary)
             }
             item {
-                Text(
-                    "${m.kind}: $plus baris ditambah (hijau, +), $minus baris dihapus (merah, -)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = JarColors.TextMuted,
-                )
+                TextButton(onClick = { full = !full }) {
+                    Text(if (full) "Hanya baris yang berbeda" else "Tampilkan semua baris")
+                }
             }
+            // ----- JAR lama -----
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { full = !full }) {
-                        Text(if (full) "Hanya yang berubah" else "Tampilkan semua baris")
-                    }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(nameOld, style = MaterialTheme.typography.titleMedium, color = Merah, modifier = Modifier.weight(1f))
                     TextButton(
-                        onClick = { clipboard.setText(AnnotatedString(m.newText)) },
-                        enabled = m.newText.isNotEmpty(),
-                    ) { Text("Salin versi baru") }
+                        onClick = { clipboard.setText(AnnotatedString(m.oldText)) },
+                        enabled = m.oldText.isNotEmpty(),
+                    ) { Text("Salin") }
                 }
             }
             item {
-                Column(Modifier.horizontalScroll(rememberScrollState())) {
-                    shown.forEach { l ->
-                        val awal = when (l.kind) {
-                            '+' -> "+ "
-                            '-' -> "- "
-                            else -> "  "
-                        }
-                        val warna = when (l.kind) {
-                            '+' -> Hijau
-                            '-' -> Merah
-                            else -> JarColors.TextMuted
-                        }
-                        Text(
-                            awal + l.text,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            softWrap = false,
-                            color = warna,
-                        )
-                    }
+                if (m.oldText.isEmpty()) {
+                    Text("Method ini tidak ada di $nameOld.", color = JarColors.TextMuted)
+                } else {
+                    CodeBlock(sisiLama)
+                }
+            }
+            // ----- JAR baru -----
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(nameNew, style = MaterialTheme.typography.titleMedium, color = Hijau, modifier = Modifier.weight(1f))
+                    TextButton(
+                        onClick = { clipboard.setText(AnnotatedString(m.newText)) },
+                        enabled = m.newText.isNotEmpty(),
+                    ) { Text("Salin") }
+                }
+            }
+            item {
+                if (m.newText.isEmpty()) {
+                    Text("Method ini tidak ada di $nameNew.", color = JarColors.TextMuted)
+                } else {
+                    CodeBlock(sisiBaru)
                 }
             }
         }
