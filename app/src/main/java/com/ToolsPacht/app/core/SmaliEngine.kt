@@ -74,7 +74,7 @@ object SmaliEngine : DexEngine {
      * disamakan dengan ukuran berkas. Semua offset di 041 dihitung dari awal berkas, jadi
      * data dex tersebut tetap terbaca benar.
      */
-    fun dexView(bytes: ByteArray, start: Int, version: String): ByteArray {
+    private fun dexView(bytes: ByteArray, start: Int, version: String): ByteArray {
         if (version != "041") return bytes
         val copy = bytes.copyOf()
         System.arraycopy(bytes, start, copy, 0, 0x78)
@@ -102,7 +102,7 @@ object SmaliEngine : DexEngine {
 
     // ---------- inti ----------
 
-    private fun disassembleBlocking(dexFile: File, outDir: File, log: (String) -> Unit): List<String> {
+    fun disassembleBlocking(dexFile: File, outDir: File, log: (String) -> Unit): List<String> {
         val bytes = dexFile.readBytes()
         val version = String(bytes, 4, 3, Charsets.US_ASCII)
         val starts = logicalStarts(bytes)
@@ -211,14 +211,19 @@ object SmaliEngine : DexEngine {
 
             val output = File(Workspace.jarOf(ctx, project).parentFile, "output.jar")
             JarPackager.repack(jar, newDex, output)
+
+            log("Memeriksa hasil (verifikasi)...")
+            val checks = JarVerifier.deep(jar, output, File(build, "verify"))
+            checks.forEach { log(it.render()) }
+            val fails = checks.filter { it.level == VerifyLevel.FAIL }
             build.deleteRecursively()
-            log("Memeriksa hasil rakitan terhadap JAR asli...")
-            val report = JarVerifier.verify(jar, output)
-            report.items.forEach { log((if (it.ok) "✔ " else "✘ ") + it.text) }
-            log(
-                if (report.ok) "Verifikasi lulus: struktur JAR sama dengan aslinya."
-                else "PERINGATAN: ada yang tidak cocok dengan JAR asli (tanda ✘). Jangan dipasang dulu.",
-            )
+            if (fails.isNotEmpty()) {
+                output.delete()
+                throw IllegalStateException(
+                    "Verifikasi gagal, output.jar tidak disimpan:\n" + fails.joinToString("\n") { it.text },
+                )
+            }
+
             log("Selesai: output.jar (${formatSize(output.length())}). Bisa diekspor lewat menu Ekspor JAR / DEX.")
             output
         }
@@ -236,3 +241,4 @@ object SmaliEngine : DexEngine {
         }
     }
 }
+
