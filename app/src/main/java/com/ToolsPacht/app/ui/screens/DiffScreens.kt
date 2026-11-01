@@ -21,6 +21,7 @@ import com.jartool.app.core.DiffSession
 import com.jartool.app.core.DiffStatus
 import com.jartool.app.core.LineTag
 import com.jartool.app.core.MethodDiff
+import com.jartool.app.core.MethodRef
 import com.jartool.app.ui.components.*
 import com.jartool.app.ui.theme.JarColors
 import kotlinx.coroutines.Dispatchers
@@ -46,12 +47,12 @@ private fun Tabs(selected: Int, titles: List<String>, onSelect: (Int) -> Unit) {
 
 /** Layar 1: daftar class yang berbeda (berubah / baru / hilang). */
 @Composable
-fun ClassDiffScreen(onBack: () -> Unit, onOpenClass: (String) -> Unit) {
+fun ClassDiffScreen(onBack: () -> Unit, onOpenClass: (String) -> Unit, onOpenMethod: (String, Int) -> Unit) {
     val r = DiffSession.result
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
     Column(Modifier.fillMaxSize()) {
-        JarTopBar("Class yang berbeda", onBack)
+        JarTopBar("Perbedaan JAR", onBack)
         if (r == null) {
             Text(
                 "Data perbandingan sudah tidak ada. Jalankan perbandingan lagi.",
@@ -60,40 +61,77 @@ fun ClassDiffScreen(onBack: () -> Unit, onOpenClass: (String) -> Unit) {
             )
         } else {
             Text(
-                "${DiffSession.oldName} → ${DiffSession.newName}",
+                "${DiffSession.oldName} → ${DiffSession.newName}\nDibaca ${r.oldCount} class (lama), ${r.newCount} class (baru)",
                 color = JarColors.TextMuted,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             Tabs(
                 tab,
-                listOf("Berubah (${r.changed.size})", "Baru (${r.added.size})", "Hilang (${r.removed.size})"),
+                listOf("Method (${r.methods.size})", "Class (${r.changed.size})", "Baru (${r.added.size})", "Hilang (${r.removed.size})"),
             ) { tab = it }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
-                label = { Text("Cari class, mis. SemBiometricFeature") },
+                label = { Text("Cari path class atau method") },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
-            val source = when (tab) {
-                0 -> r.changed
-                1 -> r.added
-                else -> r.removed
+            val q = query.trim()
+            if (tab == 0) {
+                val shown = remember(query, r) {
+                    if (q.isEmpty()) r.methods
+                    else r.methods.filter { it.cls.contains(q, true) || it.label.contains(q, true) }
+                }
+                if (shown.isEmpty()) {
+                    Text("Tidak ada.", color = JarColors.TextMuted, modifier = Modifier.padding(16.dp))
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    itemsIndexed(shown) { _, m -> MethodRefRow(m) { onOpenMethod(m.cls, m.index) } }
+                }
+            } else {
+                val source = when (tab) {
+                    1 -> r.changed
+                    2 -> r.added
+                    else -> r.removed
+                }
+                val shown = remember(tab, query, r) {
+                    if (q.isEmpty()) source else source.filter { it.contains(q, ignoreCase = true) }
+                }
+                if (shown.isEmpty()) {
+                    Text("Tidak ada.", color = JarColors.TextMuted, modifier = Modifier.padding(16.dp))
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(shown, key = { it }) { n -> ClassRow(n) { onOpenClass(n) } }
+                }
             }
-            val shown = remember(tab, query, r) {
-                if (query.isBlank()) source else source.filter { it.contains(query.trim(), ignoreCase = true) }
-            }
-            if (shown.isEmpty()) {
-                Text("Tidak ada.", color = JarColors.TextMuted, modifier = Modifier.padding(16.dp))
-            }
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(shown, key = { it }) { n -> ClassRow(n) { onOpenClass(n) } }
-            }
+        }
+    }
+}
+
+@Composable
+private fun MethodRefRow(m: MethodRef, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = JarColors.Surface),
+        border = BorderStroke(1.dp, JarColors.Outline),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(statusLabel(m.status), style = MaterialTheme.typography.labelMedium, color = statusColor(m.status))
+            Spacer(Modifier.height(2.dp))
+            Text(m.cls, style = MaterialTheme.typography.bodySmall, color = JarColors.TextMuted)
+            Spacer(Modifier.height(4.dp))
+            Text(m.label, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = JarColors.TextPrimary)
         }
     }
 }

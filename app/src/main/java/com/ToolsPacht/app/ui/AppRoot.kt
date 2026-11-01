@@ -96,6 +96,7 @@ fun AppRoot() {
                 ClassDiffScreen(
                     onBack = { nav.popBackStack() },
                     onOpenClass = { nav.navigate("diffmethods?cls=${Uri.encode(it)}") },
+                    onOpenMethod = { c, i -> nav.navigate("diffmethod?cls=${Uri.encode(c)}&i=$i") },
                 )
             }
             composable(

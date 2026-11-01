@@ -14,7 +14,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.StringWriter
-import java.security.MessageDigest
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -26,9 +25,18 @@ enum class LineTag { SAME, DEL, ADD }
 
 class MethodDiff(val label: String, val status: DiffStatus, val oldText: String, val newText: String)
 class DiffLine(val tag: LineTag, val text: String)
+/** Satu method yang berbeda, lengkap dengan path class-nya (nama bertitik). */
+class MethodRef(val cls: String, val index: Int, val label: String, val status: DiffStatus)
 
 object ClassDiffEngine {
-    class Diff(val changed: List<String>, val added: List<String>, val removed: List<String>)
+    class Diff(
+        val changed: List<String>,
+        val added: List<String>,
+        val removed: List<String>,
+        val methods: List<MethodRef>,
+        val oldCount: Int,
+        val newCount: Int,
+    )
 
     const val HEADER = "(kepala class, field, anotasi)"
 
@@ -44,21 +52,18 @@ object ClassDiffEngine {
         val sw = StringWriter()
         val w = BaksmaliWriter(sw, cd.type)
         ClassDefinition(opts, cd).writeTo(w)
-        w.flush()
+        w.close()
         return sw.toString()
-    }
-
-    private fun hash(s: String): Long {
-        val d = MessageDigest.getInstance("MD5").digest(s.toByteArray(Charsets.UTF_8))
-        var h = 0L
-        for (i in 0 until 8) h = (h shl 8) or (d[i].toLong() and 0xFF)
-        return h
     }
 
     /** Baca semua dex (termasuk kontainer 041) dari proyek. */
     suspend fun loadIndex(ctx: Context, project: String): DexIndex = withContext(Dispatchers.IO) {
         val map = LinkedHashMap<String, ClassDef>()
-        for (f in JarAnalyzer.dexFiles(ctx, project)) {
+        val dir = JarAnalyzer.dexDir(ctx, project)
+        dir.deleteRecursively()
+        val files = JarPackager.extractDex(Workspace.jarOf(ctx, project), dir)
+        if (files.isEmpty()) throw IllegalStateException("$project tidak berisi classes.dex")
+        for (f in files) {
             val bytes = f.readBytes()
             val version = String(bytes, 4, 3, Charsets.US_ASCII)
             val api = SmaliEngine.apiFor(version)
@@ -80,6 +85,7 @@ object ClassDiffEngine {
             val next = AtomicInteger(0)
             val done = AtomicInteger(0)
             val changed = ConcurrentLinkedQueue<String>()
+            val refs = ConcurrentLinkedQueue<MethodRef>()
             val workers = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
             coroutineScope {
                 (1..workers).map {
@@ -90,16 +96,27 @@ object ClassDiffEngine {
                             val i = next.getAndIncrement()
                             if (i >= total) break
                             val key = common[i]
-                            val a = hash(smali(oldI.classes.getValue(key), o))
-                            val b = hash(smali(newI.classes.getValue(key), o))
-                            if (a != b) changed.add(pretty(key))
+                            val ta = smali(oldI.classes.getValue(key), o)
+                            val tb = smali(newI.classes.getValue(key), o)
+                            if (ta.isBlank() || tb.isBlank()) {
+                                throw IllegalStateException("Hasil bongkar smali kosong untuk ${pretty(key)}")
+                            }
+                            if (ta != tb) {
+                                val md = diffTexts(ta, tb)
+                                if (md.isNotEmpty()) {
+                                    val name = pretty(key)
+                                    changed.add(name)
+                                    md.forEachIndexed { idx, m -> refs.add(MethodRef(name, idx, m.label, m.status)) }
+                                }
+                            }
                             val n = done.incrementAndGet()
                             if (n % 200 == 0 || n == total) onProgress(n, total)
                         }
                     }
                 }.awaitAll()
             }
-            Diff(changed.toList().sorted(), added, removed)
+            val methods = refs.toList().sortedWith(compareBy({ it.cls }, { it.index }))
+            Diff(changed.toList().sorted(), added, removed, methods, oldI.classes.size, newI.classes.size)
         }
 
     // ---------- tingkat method ----------
@@ -137,8 +154,15 @@ object ClassDiffEngine {
     fun methodDiff(oldI: DexIndex, newI: DexIndex, name: String): List<MethodDiff> {
         val desc = toDesc(name)
         val o = newOpts()
-        val a = split(oldI.classes[desc]?.let { smali(it, o) } ?: "")
-        val b = split(newI.classes[desc]?.let { smali(it, o) } ?: "")
+        return diffTexts(
+            oldI.classes[desc]?.let { smali(it, o) } ?: "",
+            newI.classes[desc]?.let { smali(it, o) } ?: "",
+        )
+    }
+
+    private fun diffTexts(ta: String, tb: String): List<MethodDiff> {
+        val a = split(ta)
+        val b = split(tb)
         val out = ArrayList<MethodDiff>()
         if (a.rest != b.rest) {
             val st = if (a.rest.isEmpty()) DiffStatus.ADDED else if (b.rest.isEmpty()) DiffStatus.REMOVED else DiffStatus.CHANGED
