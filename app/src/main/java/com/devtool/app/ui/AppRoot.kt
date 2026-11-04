@@ -150,12 +150,7 @@ fun AppRoot() {
                     description = "Simpan JAR atau classes.dex dari proyek ke penyimpanan",
                 )
             }
-            composable("exportproject/{name}") { e ->
-                ExportScreen(e.arguments?.getString("name").orEmpty()) { nav.popBackStack() }
-            }
-            composable("tool/{id}") { e ->
-                ToolPlaceholderScreen(e.arguments?.getString("id").orEmpty()) { nav.popBackStack() }
-            }
+            
         }
     }
 }
