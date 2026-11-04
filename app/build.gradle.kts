@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.jartool.app"
+    namespace = "com.devtool.app"
     compileSdk = 34
     defaultConfig {
-        applicationId = "com.odys.patcherjar"
+        applicationId = "com.nva.devtool"
         minSdk = 26
         targetSdk = 34
         versionCode = 3

@@ -1,6 +1,6 @@
-# JarTool (kerangka)
+# devtool-project (kerangka)
 
-app/src/main/java/com/jartool/app
+app/src/main/java/com/devtool/app
 - MainActivity.kt            titik masuk
 - ui/AppRoot.kt              navigasi bawah: Alat, Proyek, Setelan
 - ui/theme/                  warna dan tema biru kehitaman
