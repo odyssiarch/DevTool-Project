@@ -1,7 +1,7 @@
 <resources>
     <style name="Theme.DevTool" parent="@android:style/Theme.DeviceDefault.NoActionBar">
-        <item name="android:windowBackground">#05070B</item>
-        <item name="android:statusBarColor">#05070B</item>
-        <item name="android:navigationBarColor">#05070B</item>
+        <item name="android:windowBackground">#1F1E1D</item>
+        <item name="android:statusBarColor">#1F1E1D</item>
+        <item name="android:navigationBarColor">#1F1E1D</item>
     </style>
 </resources>

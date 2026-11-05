@@ -9,7 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 private val Scheme = darkColorScheme(
-    primary = JarColors.Blue,
+    primary = JarColors.Accent,
     onPrimary = JarColors.Black,
     background = JarColors.Black,
     onBackground = JarColors.TextPrimary,

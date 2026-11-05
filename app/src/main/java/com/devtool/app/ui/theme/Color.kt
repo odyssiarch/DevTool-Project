@@ -3,12 +3,12 @@ package com.devtool.app.ui.theme
 import androidx.compose.ui.graphics.Color
 
 object JarColors {
-    val Black = Color(0xFF05070B)       // latar utama
-    val Surface = Color(0xFF0B0F16)     // kartu
-    val SurfaceHigh = Color(0xFF121823) // chip, dialog
-    val Outline = Color(0xFF1C2330)     // garis tepi
-    val Blue = Color(0xFF6B93D6)        // aksen, lebih redup
-    val BlueDim = Color(0xFF151F31)     // latar ikon
-    val TextPrimary = Color(0xFFE6EAF0)
-    val TextMuted = Color(0xFF8A94A6)
+    val Black = Color(0xFF1F1E1D)       // latar utama (arang hangat)
+    val Surface = Color(0xFF2A2927)     // kartu
+    val SurfaceHigh = Color(0xFF353432) // chip, tombol tonal, dialog
+    val Outline = Color(0xFF403E3B)     // garis tepi
+    val Accent = Color(0xFFD97757)      // aksen oranye
+    val AccentDim = Color(0xFF3B2D27)   // latar ikon beraksen
+    val TextPrimary = Color(0xFFFAF9F5)
+    val TextMuted = Color(0xFFB0AEA5)
 }

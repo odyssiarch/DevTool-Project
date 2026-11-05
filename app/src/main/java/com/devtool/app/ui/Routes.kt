@@ -9,7 +9,9 @@ import android.net.Uri
  */
 object Routes {
     // Tab bawah
-    const val TOOLS = "tools"
+    const val HOME = "home"
+    const val MENU = "menu"
+    const val TERMINAL = "terminal"
     const val PROJECTS = "projects"
     const val SETTINGS = "settings"
 
@@ -20,7 +22,6 @@ object Routes {
     const val SOURCE = "source"
     const val EXPORT = "export"
     const val LOGCAT = "logcat"
-    const val LIVE_LOGCAT = "live_logcat"
 
     // Nama argumen
     const val ARG_NAME = "name"

@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
-fun ProjectsScreen(onOpen: (String) -> Unit, onOpenEdited: (String) -> Unit = {}) {
+fun ProjectsScreen(onOpen: (String) -> Unit, onOpenEdited: (String) -> Unit = {}, onBack: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     var tick by remember { mutableIntStateOf(0) }
     val projects = remember(tick) { Workspace.projects(ctx) }
@@ -50,10 +50,17 @@ fun ProjectsScreen(onOpen: (String) -> Unit, onOpenEdited: (String) -> Unit = {}
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Proyek", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack, "Kembali")
+                    }
+                }
+                Text("Proyek", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
+            }
             Button(
                 onClick = picker::openFile,
-                colors = ButtonDefaults.buttonColors(containerColor = JarColors.Blue, contentColor = JarColors.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = JarColors.Accent, contentColor = JarColors.Black),
             ) { Text("Buka JAR") }
         }
 

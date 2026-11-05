@@ -41,7 +41,7 @@ private val KEYWORDS = setOf(
 )
 private val TOKEN = Regex("""//.*|/\*.*?\*/|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|@\w+|\b\d[\w.]*\b|\b[A-Za-z_]\w*\b""")
 
-private val C_COMMENT = Color(0xFF6B7788)
+private val C_COMMENT = Color(0xFF8A8880)
 private val C_STRING = Color(0xFF9DBB8A)
 private val C_KEYWORD = Color(0xFF6B93D6)
 private val C_ANNOT = Color(0xFFC4A66F)

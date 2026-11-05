@@ -84,7 +84,7 @@ fun DecompileScreen(onBack: () -> Unit, onPicked: (String) -> Unit) {
                                 selected = mode == i,
                                 onClick = null,
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = JarColors.Blue,
+                                    selectedColor = JarColors.Accent,
                                     unselectedColor = JarColors.TextMuted,
                                 ),
                             )
@@ -111,8 +111,8 @@ fun DecompileScreen(onBack: () -> Unit, onPicked: (String) -> Unit) {
                         valueRange = 1f..8f,
                         steps = 6,
                         colors = SliderDefaults.colors(
-                            thumbColor = JarColors.Blue,
-                            activeTrackColor = JarColors.Blue,
+                            thumbColor = JarColors.Accent,
+                            activeTrackColor = JarColors.Accent,
                             inactiveTrackColor = JarColors.Outline,
                         ),
                     )

@@ -41,14 +41,14 @@ fun SettingsScreen() {
                         modifier = Modifier
                             .size(60.dp)
                             .clip(RoundedCornerShape(18.dp))
-                            .background(JarColors.BlueDim)
+                            .background(JarColors.AccentDim)
                             .border(1.dp, JarColors.Outline, RoundedCornerShape(18.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Code,
                             contentDescription = null,
-                            tint = JarColors.Blue,
+                            tint = JarColors.Accent,
                             modifier = Modifier.size(30.dp),
                         )
                     }
@@ -128,14 +128,14 @@ private fun InfoChip(text: String, accent: Boolean = false) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .background(if (accent) JarColors.BlueDim else JarColors.SurfaceHigh)
+            .background(if (accent) JarColors.AccentDim else JarColors.SurfaceHigh)
             .border(1.dp, JarColors.Outline, shape)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
             text,
             style = MaterialTheme.typography.labelSmall,
-            color = if (accent) JarColors.Blue else JarColors.TextPrimary,
+            color = if (accent) JarColors.Accent else JarColors.TextPrimary,
         )
     }
 }

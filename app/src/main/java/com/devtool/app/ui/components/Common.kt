@@ -48,8 +48,8 @@ fun JarTopBarActions(title: String, onBack: () -> Unit, actions: @Composable Row
 
 @Composable
 fun IconTile(icon: ImageVector, size: Dp = 48.dp) {
-    Surface(shape = RoundedCornerShape(14.dp), color = JarColors.BlueDim, modifier = Modifier.size(size)) {
-        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = JarColors.Blue) }
+    Surface(shape = RoundedCornerShape(14.dp), color = JarColors.AccentDim, modifier = Modifier.size(size)) {
+        Box(contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = JarColors.Accent) }
     }
 }
 

@@ -48,9 +48,9 @@ import com.devtool.app.ui.components.rememberSourcePicker
 import com.devtool.app.ui.theme.JarColors
 
 // Warna khusus layar ini (selaras dengan layar utama)
-private val EdStroke = Color(0xFF2A3446)
-private val EdGlassTop = Color(0xFF1B2332)
-private val EdGlassBottom = Color(0xFF0E131C)
+private val EdStroke = Color(0xFF403E3B)
+private val EdGlassTop = Color(0xFF353432)
+private val EdGlassBottom = Color(0xFF2A2927)
 private val EdOrange = Color(0xFFFFB067)
 private val EdPurple = Color(0xFFB69CFF)
 
@@ -148,7 +148,7 @@ private fun EmptyEdit(onFile: () -> Unit, onProjects: () -> Unit, modifier: Modi
                 Column(Modifier.padding(20.dp)) {
                     Text("Alur mengedit", color = JarColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
-                    Step("1", "Bongkar ke Smali", "JAR diubah jadi folder berisi file .smali", JarColors.Blue)
+                    Step("1", "Bongkar ke Smali", "JAR diubah jadi folder berisi file .smali", JarColors.Accent)
                     Step("2", "Edit file .smali", "Ubah kode di folder hasil bongkar", EdOrange)
                     Step("3", "Susun ulang JAR", "Hasilnya output.jar, diverifikasi otomatis", EdPurple)
                 }
@@ -186,11 +186,11 @@ private fun IconBadge(icon: ImageVector, sizeDp: Int) {
         Modifier
             .size(sizeDp.dp)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFF223052), Color(0xFF111827))))
-            .border(1.dp, Color(0xFF31405E), shape),
+            .background(Brush.linearGradient(listOf(Color(0xFF3B2D27), Color(0xFF2A2927))))
+            .border(1.dp, Color(0xFF403E3B), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = JarColors.Blue, modifier = Modifier.size((sizeDp * 0.5f).dp))
+        Icon(icon, null, tint = JarColors.Accent, modifier = Modifier.size((sizeDp * 0.5f).dp))
     }
 }
 
@@ -206,21 +206,21 @@ private fun PillButton(
     val h = if (compact) 44.dp else 52.dp
     val shape = RoundedCornerShape(h / 2)
     val bg = if (filled) {
-        Modifier.background(Brush.horizontalGradient(listOf(Color(0xFF2A3B63), Color(0xFF1C2742))))
+        Modifier.background(Brush.horizontalGradient(listOf(Color(0xFF3B2D27), Color(0xFF3B2D27))))
     } else {
-        Modifier.background(Color(0xFF111722))
+        Modifier.background(Color(0xFF2A2927))
     }
     Row(
         modifier
             .height(h)
             .clip(shape)
             .then(bg)
-            .border(1.dp, if (filled) Color(0xFF3A4D78) else EdStroke, shape)
+            .border(1.dp, if (filled) Color(0xFF6B4636) else EdStroke, shape)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, null, tint = JarColors.Blue, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = JarColors.Accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.size(8.dp))
         Text(label, color = JarColors.TextPrimary, fontSize = if (compact) 14.sp else 15.sp, fontWeight = FontWeight.Medium)
     }

@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
 private val L_FATAL = Color(0xFFFF6B6B) // Merah
 private val L_WARN = Color(0xFFFFC857)  // Kuning
 private val L_AVC = Color(0xFFFFB067)   // Oranye
-private val L_NORMAL = Color(0xFFE6EAF0)
+private val L_NORMAL = Color(0xFFFAF9F5)
 
 @Composable
 fun LogcatScreen(onBack: () -> Unit) {
@@ -99,7 +99,7 @@ fun LogcatScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = { launcher.launch(arrayOf("*/*")) },
-                    colors = ButtonDefaults.buttonColors(containerColor = JarColors.Blue, contentColor = JarColors.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = JarColors.Accent, contentColor = JarColors.Black)
                 ) {
                     Icon(Icons.Outlined.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -122,7 +122,7 @@ fun LogcatScreen(onBack: () -> Unit) {
                     textStyle = MaterialTheme.typography.bodySmall,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = JarColors.Blue,
+                        focusedBorderColor = JarColors.Accent,
                         unfocusedBorderColor = JarColors.Outline
                     )
                 )

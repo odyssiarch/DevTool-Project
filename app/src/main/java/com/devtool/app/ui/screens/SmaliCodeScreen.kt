@@ -31,7 +31,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val S_COMMENT = Color(0xFF6B7788)
+private val S_COMMENT = Color(0xFF8A8880)
 private val S_STRING = Color(0xFF9DBB8A)
 private val S_DIRECTIVE = Color(0xFF6B93D6)
 private val S_OPCODE = Color(0xFFD08FD6)

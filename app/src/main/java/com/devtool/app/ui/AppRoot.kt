@@ -1,24 +1,33 @@
 package com.devtool.app.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -30,9 +39,54 @@ import com.devtool.app.ui.screens.*
 import com.devtool.app.ui.theme.JarColors
 
 enum class Dest(val route: String, val label: String, val icon: ImageVector) {
-    Tools(Routes.TOOLS, "Alat", Icons.Outlined.Code),
-    Projects(Routes.PROJECTS, "Proyek", Icons.Outlined.Folder),
-    Settings(Routes.SETTINGS, "Setelan", Icons.Outlined.Tune),
+    Home(Routes.HOME, "Beranda", Icons.Filled.Home),
+    Menu(Routes.MENU, "Menu", Icons.Filled.GridView),
+    Terminal(Routes.TERMINAL, "Terminal", Icons.Filled.Terminal),
+    Settings(Routes.SETTINGS, "Setelan", Icons.Filled.Settings),
+}
+
+/** Nav bawah model pil melayang: tab aktif menampilkan ikon + label di dalam pil. */
+@Composable
+private fun PillNav(route: String?, onSelect: (Dest) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = JarColors.Surface,
+            border = BorderStroke(1.dp, JarColors.Outline),
+            shadowElevation = 8.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Dest.entries.forEach { d ->
+                    val sel = route == d.route
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(if (sel) JarColors.SurfaceHigh else Color.Transparent)
+                            .clickable { onSelect(d) }
+                            .padding(horizontal = if (sel) 20.dp else 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(d.icon, d.label, tint = if (sel) JarColors.Accent else JarColors.TextMuted)
+                        if (sel) {
+                            Spacer(Modifier.width(10.dp))
+                            Text(d.label, color = JarColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -41,9 +95,17 @@ fun AppRoot() {
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
 
+    val goTab: (String) -> Unit = { r ->
+        nav.navigate(r) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     val back: () -> Unit = {
         if (!nav.popBackStack()) {
-            nav.navigate(Routes.TOOLS) {
+            nav.navigate(Routes.HOME) {
                 popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
                 launchSingleTop = true
             }
@@ -54,65 +116,26 @@ fun AppRoot() {
         containerColor = JarColors.Black,
         bottomBar = {
             if (Dest.entries.any { it.route == route }) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding() // Memberi jarak aman dari gesture bar HP
-                        .padding(horizontal = 24.dp, vertical = 8.dp), // Jarak ngambang dock
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(32.dp),
-                        color = JarColors.Surface,
-                        border = BorderStroke(1.dp, JarColors.Outline),
-                        shadowElevation = 8.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        NavigationBar(
-                            containerColor = Color.Transparent,
-                            tonalElevation = 0.dp,
-                            windowInsets = WindowInsets(0.dp), // MATIKAN padding bawaan NavigationBar agar tidak dobel
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Dest.entries.forEach { d ->
-                                NavigationBarItem(
-                                    selected = route == d.route,
-                                    onClick = {
-                                        nav.navigate(d.route) {
-                                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    icon = { Icon(d.icon, contentDescription = d.label) },
-                                    label = { Text(d.label) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = JarColors.Blue,
-                                        selectedTextColor = JarColors.Blue,
-                                        indicatorColor = JarColors.BlueDim,
-                                        unselectedIconColor = JarColors.TextMuted,
-                                        unselectedTextColor = JarColors.TextMuted,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                }
+                PillNav(route) { goTab(it.route) }
             }
         },
     ) { pad ->
-        NavHost(nav, startDestination = Routes.TOOLS, modifier = Modifier.padding(pad)) {
+        NavHost(nav, startDestination = Routes.HOME, modifier = Modifier.padding(pad)) {
 
-            composable(Routes.TOOLS) {
+            composable(Routes.HOME) {
                 HomeScreen(
-                    onOpenTool = { nav.navigate(it) },
+                    onOpenMenu = { goTab(Routes.MENU) },
+                    onOpenSettings = { goTab(Routes.SETTINGS) },
                     onPickFile = { nav.navigate(Routes.EDIT) },
                 )
             }
+            composable(Routes.MENU) { MenuScreen(onOpen = { nav.navigate(it) }) }
+            composable(Routes.TERMINAL) { LiveLogcatScreen() }
             composable(Routes.PROJECTS) {
                 ProjectsScreen(
                     onOpen = { nav.navigate(Routes.project(it, edit = true)) },
                     onOpenEdited = { nav.navigate(Routes.edited(it)) },
+                    onBack = back,
                 )
             }
             composable(Routes.SETTINGS) { SettingsScreen() }
@@ -134,7 +157,6 @@ fun AppRoot() {
             
             // --- FITUR BARU: LOGCAT ---
             composable(Routes.LOGCAT) { LogcatScreen(onBack = back) }
-            composable(Routes.LIVE_LOGCAT) { LiveLogcatScreen(onBack = back) }
             
             composable(
                 Routes.PROJECT,

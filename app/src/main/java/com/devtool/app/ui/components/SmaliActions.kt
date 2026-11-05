@@ -80,7 +80,7 @@ fun SmaliActions(project: String, onExport: () -> Unit) {
                     onClick = onExport,
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = JarColors.Blue,
+                        containerColor = JarColors.Accent,
                         contentColor = JarColors.Black
                     ),
                 ) {

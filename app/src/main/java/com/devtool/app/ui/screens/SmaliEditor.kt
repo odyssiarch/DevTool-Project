@@ -109,9 +109,9 @@ private const val MAX_BYTES = 600_000L
 // Pewarnaan sintaks dimatikan untuk teks yang lebih panjang dari ini (supaya tidak lag)
 private const val HIGHLIGHT_MAX = 250_000
 
-private val EBg = Color(0xFF05070C)
-private val EBar = Color(0xFF0E131C)
-private val EStroke = Color(0xFF2A3446)
+private val EBg = Color(0xFF1F1E1D)
+private val EBar = Color(0xFF2A2927)
+private val EStroke = Color(0xFF403E3B)
 private val EOrange = Color(0xFFFFB067)
 
 private val codeStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 19.sp)
@@ -277,7 +277,7 @@ private fun SmaliBrowser(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF111722))
+                .background(Color(0xFF2A2927))
                 .border(1.dp, EStroke, RoundedCornerShape(24.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -291,7 +291,7 @@ private fun SmaliBrowser(
                     onValueChange = { query = it },
                     singleLine = true,
                     textStyle = TextStyle(color = JarColors.TextPrimary, fontSize = 14.sp),
-                    cursorBrush = SolidColor(JarColors.Blue),
+                    cursorBrush = SolidColor(JarColors.Accent),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -372,7 +372,7 @@ private fun TreeRow(item: TreeItem, open: Boolean, onClick: () -> Unit) {
         Icon(
             if (dir) (if (open) Icons.Outlined.FolderOpen else Icons.Outlined.Folder) else Icons.Outlined.Description,
             null,
-            tint = if (dir) JarColors.Blue else JarColors.TextMuted,
+            tint = if (dir) JarColors.Accent else JarColors.TextMuted,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.size(12.dp))
@@ -646,7 +646,7 @@ private fun MethodList(
         if (t.isEmpty()) chunks else chunks.filter { it.title.contains(t, ignoreCase = true) }
     }
     val status = message ?: "Berkas besar ($sizeText), dibuka per method"
-    val statusColor = if (message != null) JarColors.Blue else JarColors.TextMuted
+    val statusColor = if (message != null) JarColors.Accent else JarColors.TextMuted
 
     Column(Modifier.fillMaxSize()) {
         if (canRestore) {
@@ -662,7 +662,7 @@ private fun MethodList(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF111722))
+                .background(Color(0xFF2A2927))
                 .border(1.dp, EStroke, RoundedCornerShape(24.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -676,7 +676,7 @@ private fun MethodList(
                     onValueChange = { q = it },
                     singleLine = true,
                     textStyle = TextStyle(color = JarColors.TextPrimary, fontSize = 14.sp),
-                    cursorBrush = SolidColor(JarColors.Blue),
+                    cursorBrush = SolidColor(JarColors.Accent),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -844,7 +844,7 @@ private fun CodeEditor(
 
     val status = msg ?: if (dirty) "Belum disimpan" else (subtitle ?: "Tidak ada perubahan")
     val statusColor = when {
-        msg != null -> JarColors.Blue
+        msg != null -> JarColors.Accent
         dirty -> EOrange
         else -> JarColors.TextMuted
     }
@@ -853,26 +853,26 @@ private fun CodeEditor(
         EditorHeader(title, status, statusColor, onBack) {
             ActionIcon(Icons.Outlined.Undo, undo.isNotEmpty()) { doUndo() }
             ActionIcon(Icons.Outlined.Redo, redo.isNotEmpty()) { doRedo() }
-            ActionIcon(Icons.Outlined.Search, true, tint = if (findOpen) JarColors.Blue else JarColors.TextPrimary) {
+            ActionIcon(Icons.Outlined.Search, true, tint = if (findOpen) JarColors.Accent else JarColors.TextPrimary) {
                 findOpen = !findOpen
             }
             if (onRestore != null) {
                 ActionIcon(Icons.Outlined.Restore, true) { confirmRestore = true }
             }
             Spacer(Modifier.weight(1f))
-            ActionIcon(Icons.Outlined.Save, dirty, tint = JarColors.Blue) { save() }
+            ActionIcon(Icons.Outlined.Save, dirty, tint = JarColors.Accent) { save() }
         }
 
         if (findOpen) {
             Row(
-                Modifier.fillMaxWidth().background(Color(0xFF0B1018)).padding(horizontal = 12.dp, vertical = 6.dp),
+                Modifier.fillMaxWidth().background(Color(0xFF2A2927)).padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(18.dp))
-                        .background(Color(0xFF111722))
+                        .background(Color(0xFF2A2927))
                         .border(1.dp, EStroke, RoundedCornerShape(18.dp))
                         .padding(horizontal = 12.dp, vertical = 9.dp),
                 ) {
@@ -882,7 +882,7 @@ private fun CodeEditor(
                         onValueChange = { findQuery = it },
                         singleLine = true,
                         textStyle = TextStyle(color = JarColors.TextPrimary, fontSize = 14.sp),
-                        cursorBrush = SolidColor(JarColors.Blue),
+                        cursorBrush = SolidColor(JarColors.Accent),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
                             imeAction = ImeAction.Search,
@@ -904,7 +904,7 @@ private fun CodeEditor(
                 }
                 Text(
                     "Aa",
-                    color = if (caseSensitive) JarColors.Blue else JarColors.TextMuted,
+                    color = if (caseSensitive) JarColors.Accent else JarColors.TextMuted,
                     fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -933,7 +933,7 @@ private fun CodeEditor(
                     value = text,
                     onValueChange = { onEdit(it) },
                     textStyle = codeStyle.copy(color = JarColors.TextPrimary),
-                    cursorBrush = SolidColor(JarColors.Blue),
+                    cursorBrush = SolidColor(JarColors.Accent),
                     visualTransformation = vt,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
@@ -957,7 +957,7 @@ private fun CodeEditor(
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF1B2332))
+                        .background(Color(0xFF353432))
                         .clickable { insert(ins) }
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     contentAlignment = Alignment.Center,
@@ -1004,7 +1004,7 @@ private val spLabel = SpanStyle(color = Color(0xFFF78C6C))
 private val spString = SpanStyle(color = Color(0xFFA5D6A7))
 private val spNumber = SpanStyle(color = Color(0xFFFFB067))
 private val spType = SpanStyle(color = Color(0xFF89DDFF))
-private val spComment = SpanStyle(color = Color(0xFF6B7A90), fontStyle = FontStyle.Italic)
+private val spComment = SpanStyle(color = Color(0xFF8A8880), fontStyle = FontStyle.Italic)
 private val spMatchAll = SpanStyle(background = Color(0x55FFCB6B))
 private val spMatchCur = SpanStyle(background = Color(0xAAFFB067))
 

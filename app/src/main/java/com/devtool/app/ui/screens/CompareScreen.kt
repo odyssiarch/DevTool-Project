@@ -114,7 +114,7 @@ fun CompareScreen(onBack: () -> Unit) {
                         enabled = oldP != null && newP != null && !vm.running,
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = JarColors.Blue,
+                            containerColor = JarColors.Accent,
                             contentColor = JarColors.Black,
                             disabledContainerColor = JarColors.SurfaceHigh,
                             disabledContentColor = JarColors.TextMuted,
@@ -177,7 +177,7 @@ private fun OptionRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
             checked = checked,
             onCheckedChange = onChange,
             colors = CheckboxDefaults.colors(
-                checkedColor = JarColors.Blue,
+                checkedColor = JarColors.Accent,
                 checkmarkColor = JarColors.Black,
                 uncheckedColor = JarColors.TextMuted,
             ),
@@ -328,7 +328,7 @@ private fun LazyListScope.deepItems(
                 checked = hideOther,
                 onCheckedChange = onHideOther,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = JarColors.Blue,
+                    checkedColor = JarColors.Accent,
                     checkmarkColor = JarColors.Black,
                     uncheckedColor = JarColors.TextMuted,
                 ),
