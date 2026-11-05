@@ -2,11 +2,9 @@ package com.devtool.app.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -150,24 +148,29 @@ fun LogcatScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Tampilan Teks Log
-            val hScroll = rememberScrollState()
-            LazyColumn(Modifier.fillMaxSize()) {
+            // Tampilan Teks Log (Diubah biar Word Wrap)
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp) // Spasi biar baris terakhir nggak mentok
+            ) {
                 itemsIndexed(filteredLines) { i, line ->
-                    Row(Modifier.horizontalScroll(hScroll)) {
+                    // Kita hapus Row(Modifier.horizontalScroll(...)) agar teks turun ke bawah
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
                         Text(
                             "${i + 1}",
                             color = JarColors.TextMuted,
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSize.sp,
                             textAlign = TextAlign.End,
-                            modifier = Modifier.width(52.dp).padding(end = 12.dp),
+                            modifier = Modifier.width(48.dp).padding(end = 8.dp, top = 2.dp),
                         )
                         Text(
                             highlightLog(line),
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSize.sp,
-                            softWrap = false,
+                            // softWrap = true (default) membuat teks otomatis turun ke bawah
+                            softWrap = true,
+                            modifier = Modifier.weight(1f).padding(top = 2.dp)
                         )
                     }
                 }

@@ -1,5 +1,6 @@
 package com.devtool.app.ui.screens
 
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -87,6 +88,9 @@ fun HomeScreen(
             // TOMBOL RAMOOPS BARU
             Spacer(Modifier.height(10.dp))
             QuickChip(Icons.Outlined.Warning, "Baca Logcat / Ramoops", Orange) { onOpenTool(Routes.LOGCAT) }
+            
+            Spacer(Modifier.height(10.dp))
+            QuickChip(Icons.Outlined.PlayArrow, "Live Logcat (Root)", Blue) { onOpenTool(Routes.LIVE_LOGCAT) }
         }
 
         Row(
