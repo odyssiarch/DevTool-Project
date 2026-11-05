@@ -1,4 +1,4 @@
-package com.devtool.app
+package com.devtool.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -88,7 +88,7 @@ fun HomeScreen(
             Spacer(Modifier.height(14.dp))
             QuickChip(Icons.Outlined.Code, "Lihat kode Java dari JAR", Blue) { onOpenTool("source") }
             Spacer(Modifier.height(10.dp))
-            QuickChip(Icons.Outlined.Edit, "Edit Smali lalu susun ulang", Orange) { onOpenTool("edit") }
+            QuickChip(Icons.Outlined.Edit, "Edit Smali lalu susun ulang", Orange) { onOpenTool("smali") }
             Spacer(Modifier.height(10.dp))
             QuickChip(Icons.Outlined.SwapVert, "Bandingkan dua versi JAR", Blue) { onOpenTool("compare") }
             Spacer(Modifier.height(10.dp))

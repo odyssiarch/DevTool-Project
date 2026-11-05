@@ -27,7 +27,7 @@ private val tools = listOf(
 )
 
 @Composable
-fun ToolsScreen(onOpen: (String) -> Unit) {
+fun ToolsScreenOld(onOpen: (String) -> Unit) {
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -72,4 +72,14 @@ private fun ToolCard(item: ToolItem, onClick: () -> Unit) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = JarColors.TextMuted)
         }
     }
+}
+
+@Composable
+fun ToolsScreen(onOpen: (String) -> Unit) {
+    HomeScreen(
+        lastProject = null,
+        onOpenTool = onOpen,
+        onResume = { },
+        onPickFile = { onOpen("smali") },
+    )
 }
