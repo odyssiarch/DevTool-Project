@@ -60,7 +60,7 @@ private val EdPurple = Color(0xFFB69CFF)
  * Sudah ada JAR: bilah ringkas nama JAR lalu isi proyek (ProjectBody, tidak diubah).
  */
 @Composable
-fun EditJarScreen(onBack: () -> Unit) {
+fun EditJarScreen(onBack: () -> Unit, onExport: (String) -> Unit = {}) {
     val ctx = LocalContext.current
     val prefs = remember { ctx.getSharedPreferences("edit_jar", Context.MODE_PRIVATE) }
     var project by rememberSaveable {
@@ -80,7 +80,8 @@ fun EditJarScreen(onBack: () -> Unit) {
                 onFile = picker::openFile,
                 onProjects = picker::openProjects,
             )
-            ProjectBody(p, true, Modifier.weight(1f))
+            // GANTI BARIS INI: Masukkan parameter onExport
+            ProjectBody(p, true, onExport = onExport, modifier = Modifier.weight(1f))
         } else {
             EmptyEdit(
                 onFile = picker::openFile,

@@ -87,7 +87,13 @@ fun AppRoot() {
             }
             composable(Routes.SETTINGS) { SettingsScreen() }
 
-            composable(Routes.EDIT) { EditJarScreen(onBack = back) }
+            composable(Routes.EDIT) {
+               EditJarScreen(
+                  onBack = back,
+                  onExport = { nav.navigate(Routes.exportProject(it)) }
+               )
+            }      
+               
             composable(Routes.EDITED) { e ->
                 EditedScreen(e.arguments?.getString(Routes.ARG_NAME).orEmpty()) { nav.popBackStack() }
             }
