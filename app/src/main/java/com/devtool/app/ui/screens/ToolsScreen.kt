@@ -24,6 +24,7 @@ private val tools = listOf(
     ToolItem("compare", "Bandingkan JAR", null, "Bandingkan dua versi dan lihat class serta berkas yang berubah", Icons.Outlined.SwapVert),
     ToolItem("info", "Info JAR", null, "Daftar classes.dex, versi dex, jumlah class, dan API level", Icons.Outlined.Info),
     ToolItem("stub", "Buat stub .so", "elf", "Buat library .so atau binary stub (arm64 / x86_64)", Icons.Outlined.Build),
+    ToolItem("patchso", "Patch .so", "elf", "Timpa fungsi, ganti byte hex, atau ubah dependency di library yang sudah ada", Icons.Outlined.Edit),
 )
 
 @Composable

@@ -93,7 +93,7 @@ object StubElf {
     private fun padByte(arch: StubArch): Int = if (arch == StubArch.ARM64) 0x00 else 0xCC
 
     /** Kode fungsi: kembalikan [value] di register hasil lalu ret. */
-    private fun retCode(arch: StubArch, value: Long): ByteArray {
+    internal fun retCode(arch: StubArch, value: Long): ByteArray {
         val w = Le()
         if (arch == StubArch.ARM64) {
             if (value == -1L) {

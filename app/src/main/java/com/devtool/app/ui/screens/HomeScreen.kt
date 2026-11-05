@@ -55,7 +55,7 @@ data class LastProject(val name: String, val classCount: Int)
 @Composable
 fun HomeScreen(
     lastProject: LastProject?,
-    onOpenTool: (String) -> Unit,   // "source", "smali", "compare", "stub"
+    onOpenTool: (String) -> Unit,   // "source", "smali", "compare", "stub", "patchso"
     onResume: () -> Unit,
     onPickFile: () -> Unit,
 ) {
@@ -97,6 +97,8 @@ fun HomeScreen(
             QuickChip(Icons.Outlined.SwapVert, "Bandingkan dua versi JAR", Blue) { onOpenTool("compare") }
             Spacer(Modifier.height(10.dp))
             QuickChip(Icons.Outlined.Build, "Buat stub .so", Purple) { onOpenTool("stub") }
+            Spacer(Modifier.height(10.dp))
+            QuickChip(Icons.Outlined.Edit, "Patch fungsi di .so", Orange) { onOpenTool("patchso") }
         }
 
         // Tombol utama menempel di bawah
@@ -158,6 +160,7 @@ private fun AboutCard() {
             AboutLine("Mendukung dex 035 – 041, termasuk 2 dex dalam 1 kontainer")
             AboutLine("Membandingkan dua JAR sampai level class dan method")
             AboutLine("Membuat library atau binary stub .so (arm64 / x86_64)")
+            AboutLine("Mem-patch .so yang sudah ada: fungsi, byte hex, dan dependency")
         }
     }
 }

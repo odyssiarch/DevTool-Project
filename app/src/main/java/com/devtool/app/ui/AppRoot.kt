@@ -74,6 +74,7 @@ fun AppRoot() {
                             "source" -> "source"
                             "export" -> "export"
                             "stub" -> "stub"
+                            "patchso" -> "patchso"
                             else -> "tool/$id"
                         },
                     )
@@ -95,6 +96,7 @@ fun AppRoot() {
             }
             composable("compare") { CompareScreen(onBack = { nav.popBackStack() }) }
             composable("stub") { StubScreen(onBack = { nav.popBackStack() }) }
+            composable("patchso") { PatchSoScreen(onBack = { nav.popBackStack() }) }
             composable(
                 "project/{name}?edit={edit}",
                 arguments = listOf(
