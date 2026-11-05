@@ -24,24 +24,21 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.devtool.app.core.ClassChange
 import com.devtool.app.core.CompareResult
 import com.devtool.app.core.DeepResult
 import com.devtool.app.core.DiffLine
-import com.devtool.app.core.JarComparer
 import com.devtool.app.core.JarNames
-import com.devtool.app.core.JarVerifier
 import com.devtool.app.core.MethodChange
 import com.devtool.app.core.SmaliDiff
 import com.devtool.app.core.VerifyCheck
 import com.devtool.app.core.VerifyLevel
-import com.devtool.app.core.Workspace
 import com.devtool.app.core.formatSize
 import com.devtool.app.ui.components.*
 import com.devtool.app.ui.theme.JarColors
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.devtool.app.ui.viewmodel.CompareViewModel
+import com.devtool.app.ui.viewmodel.vmFactory
 
 private val Hijau = Color(0xFF5BD98C)
 private val Kuning = Color(0xFFFFC857)
@@ -51,83 +48,33 @@ private val Garis = Color(0x33FFFFFF)
 
 @Composable
 fun CompareScreen(onBack: () -> Unit) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val appCtx = LocalContext.current.applicationContext
+    // Hasil dan proses perbandingan hidup di ViewModel, jadi selamat dari layar diputar.
+    val vm: CompareViewModel = viewModel(factory = vmFactory { CompareViewModel(appCtx) })
+
+    // Pilihan input tetap di layar (rememberSaveable).
     var oldP by rememberSaveable { mutableStateOf<String?>(null) }
     var newP by rememberSaveable { mutableStateOf<String?>(null) }
     var code by rememberSaveable { mutableStateOf(false) }
     var res by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var hideOther by rememberSaveable { mutableStateOf(true) }
-    var nameOld by rememberSaveable { mutableStateOf("Versi lama") }
-    var nameNew by rememberSaveable { mutableStateOf("Versi baru") }
-    var running by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("") }
-    var result by remember { mutableStateOf<CompareResult?>(null) }
-    var checks by remember { mutableStateOf<List<VerifyCheck>>(emptyList()) }
-    var deep by remember { mutableStateOf<DeepResult?>(null) }
-    var selClass by remember { mutableStateOf<String?>(null) }
-    var selMethod by remember { mutableStateOf<MethodChange?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
 
-    fun resetResult() {
-        result = null
-        checks = emptyList()
-        deep = null
-        selClass = null
-        selMethod = null
-    }
+    val pickOld = rememberSourcePicker { oldP = it; vm.reset() }
+    val pickNew = rememberSourcePicker { newP = it; vm.reset() }
 
-    val pickOld = rememberSourcePicker { oldP = it; resetResult() }
-    val pickNew = rememberSourcePicker { newP = it; resetResult() }
+    val r = vm.result
+    val err = vm.error
+    val d = vm.deep
+    val k = vm.selClass
+    val m = vm.selMethod
 
-    fun start() {
-        val a = oldP ?: return
-        val b = newP ?: return
-        val da = JarNames.display(a)
-        val db = JarNames.display(b)
-        val na = if (da == db) "$da (lama)" else da
-        val nb = if (da == db) "$db (baru)" else db
-        running = true
-        error = null
-        status = ""
-        resetResult()
-        nameOld = na
-        nameNew = nb
-        scope.launch {
-            try {
-                checks = withContext(Dispatchers.IO) {
-                    try {
-                        JarVerifier.structure(Workspace.jarOf(ctx, a), Workspace.jarOf(ctx, b), na, nb)
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                }
-                result = withContext(Dispatchers.IO) { JarComparer.compare(ctx, a, b, code, res) }
-                if (code) deep = SmaliDiff.compare(ctx, a, b, na, nb) { status = it }
-            } catch (e: Exception) {
-                error = e.message ?: "Perbandingan gagal"
-            } finally {
-                running = false
-                status = ""
-            }
-        }
-    }
-
-    val r = result
-    val err = error
-    val d = deep
-    val k = selClass
-    val m = selMethod
-
-    BackHandler(enabled = k != null) {
-        if (selMethod != null) selMethod = null else selClass = null
-    }
+    BackHandler(enabled = k != null) { vm.backFromDetail() }
 
     if (d != null && k != null && m != null) {
-        MethodDiffScreen(k, m, d.oldName, d.newName) { selMethod = null }
+        MethodDiffScreen(k, m, d.oldName, d.newName) { vm.selectMethod(null) }
     } else if (d != null && k != null) {
-        ClassDetailScreen(d, k, onBack = { selClass = null }, onOpen = { selMethod = it })
+        ClassDetailScreen(d, k, onBack = { vm.selectClass(null) }, onOpen = { vm.selectMethod(it) })
     } else {
         Column(Modifier.fillMaxSize()) {
             JarTopBar("Bandingkan JAR", onBack)
@@ -159,8 +106,12 @@ fun CompareScreen(onBack: () -> Unit) {
                 }
                 item {
                     Button(
-                        onClick = { start() },
-                        enabled = oldP != null && newP != null && !running,
+                        onClick = {
+                            val a = oldP
+                            val b = newP
+                            if (a != null && b != null) vm.start(a, b, code, res)
+                        },
+                        enabled = oldP != null && newP != null && !vm.running,
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = JarColors.Blue,
@@ -172,18 +123,18 @@ fun CompareScreen(onBack: () -> Unit) {
                     ) {
                         Icon(Icons.Outlined.SwapVert, contentDescription = null)
                         Spacer(Modifier.width(10.dp))
-                        Text(if (running) "Membandingkan..." else "Mulai perbandingan")
+                        Text(if (vm.running) "Membandingkan..." else "Mulai perbandingan")
                     }
                 }
-                if (running) {
+                if (vm.running) {
                     item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
-                    if (status.isNotEmpty()) item { Text(status, color = JarColors.TextMuted, style = MaterialTheme.typography.bodySmall) }
+                    if (vm.status.isNotEmpty()) item { Text(vm.status, color = JarColors.TextMuted, style = MaterialTheme.typography.bodySmall) }
                 }
                 if (err != null) item { Text(err, color = MaterialTheme.colorScheme.error) }
-                if (checks.isNotEmpty()) checksItems(checks, nameOld, nameNew)
-                if (r != null) resultItems(r, nameOld, nameNew)
+                if (vm.checks.isNotEmpty()) checksItems(vm.checks, vm.nameOld, vm.nameNew)
+                if (r != null) resultItems(r, vm.nameOld, vm.nameNew)
                 if (d != null) {
-                    deepItems(d, query, { query = it }, hideOther, { hideOther = it }, { selClass = it })
+                    deepItems(d, query, { query = it }, hideOther, { hideOther = it }, { vm.selectClass(it) })
                 }
             }
         }

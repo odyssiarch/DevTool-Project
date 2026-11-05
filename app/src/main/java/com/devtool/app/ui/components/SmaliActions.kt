@@ -3,45 +3,25 @@ package com.devtool.app.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.devtool.app.core.SmaliEngine
-import com.devtool.app.core.Workspace
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.devtool.app.ui.theme.JarColors
-import kotlinx.coroutines.launch
-import java.io.File
+import com.devtool.app.ui.viewmodel.SmaliJobViewModel
+import com.devtool.app.ui.viewmodel.vmFactory
 
 /** Kartu "Edit Smali": tombol bongkar ke Smali dan susun ulang JAR. */
 @Composable
 fun SmaliActions(project: String) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    var lines by remember(project) { mutableStateOf(listOf<String>()) }
-    var hasSmali by remember(project) { mutableStateOf(SmaliEngine.hasSmali(ctx, project)) }
-    var konfirmasiTimpa by remember { mutableStateOf(false) }
-
-    fun outputJar() = File(Workspace.jarOf(ctx, project).parentFile, "output.jar")
-    var outputAda by remember(project) { mutableStateOf(outputJar().exists()) }
-
-    fun start(task: suspend ((String) -> Unit) -> Unit) {
-        scope.launch {
-            busy = true
-            lines = emptyList()
-            val add: (String) -> Unit = { line -> lines = (lines + line).takeLast(10) }
-            try {
-                task(add)
-            } catch (e: Throwable) {
-                add("GAGAL: ${e.message ?: e.javaClass.simpleName}")
-            }
-            hasSmali = SmaliEngine.hasSmali(ctx, project)
-            outputAda = outputJar().exists()
-            busy = false
-        }
-    }
-
-    fun bongkar() = start { log -> SmaliEngine.disassembleProject(ctx, project, log) }
+    val appCtx = LocalContext.current.applicationContext
+    // Proses bongkar/rakit hidup di ViewModel (satu per proyek), bukan di composable.
+    val vm: SmaliJobViewModel = viewModel(
+        key = "smali-job-$project",
+        factory = vmFactory { SmaliJobViewModel(appCtx, project) },
+    )
+    var konfirmasiTimpa by rememberSaveable { mutableStateOf(false) }
 
     if (konfirmasiTimpa) {
         AlertDialog(
@@ -52,7 +32,7 @@ fun SmaliActions(project: String) {
                 Text("Folder Smali untuk proyek ini sudah ada. Membongkar ulang akan menghapus semua edit .smali di dalamnya.")
             },
             confirmButton = {
-                TextButton(onClick = { konfirmasiTimpa = false; bongkar() }) { Text("Bongkar ulang") }
+                TextButton(onClick = { konfirmasiTimpa = false; vm.bongkar() }) { Text("Bongkar ulang") }
             },
             dismissButton = { TextButton(onClick = { konfirmasiTimpa = false }) { Text("Batal") } },
         )
@@ -67,26 +47,26 @@ fun SmaliActions(project: String) {
                 color = JarColors.TextMuted,
             )
             Button(
-                onClick = { if (hasSmali) konfirmasiTimpa = true else bongkar() },
-                enabled = !busy,
+                onClick = { if (vm.hasSmali) konfirmasiTimpa = true else vm.bongkar() },
+                enabled = !vm.busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Bongkar ke Smali") }
             Button(
-                onClick = { start { log -> SmaliEngine.assembleProject(ctx, project, log) } },
-                enabled = !busy && hasSmali,
+                onClick = { vm.susunUlang() },
+                enabled = !vm.busy && vm.hasSmali,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Susun ulang JAR") }
-            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            if (lines.isNotEmpty()) {
+            if (vm.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            if (vm.lines.isNotEmpty()) {
                 Text(
-                    lines.joinToString("\n"),
+                    vm.lines.joinToString("\n"),
                     style = MaterialTheme.typography.bodySmall,
                     color = JarColors.TextMuted,
                 )
             }
-            if (outputAda) {
+            if (vm.outputAda) {
                 Text(
-                    "output.jar tersimpan di:\n${outputJar().absolutePath}\nAmbil lewat menu Ekspor JAR / DEX.",
+                    "output.jar tersimpan di:\n${vm.outputPath}\nAmbil lewat menu Ekspor JAR / DEX.",
                     style = MaterialTheme.typography.bodySmall,
                     color = JarColors.TextMuted,
                 )

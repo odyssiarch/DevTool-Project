@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,14 +33,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,24 +51,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.devtool.app.core.SmaliEngine
 import com.devtool.app.core.formatSize
 import com.devtool.app.ui.components.JarCard
 import com.devtool.app.ui.theme.JarColors
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.devtool.app.ui.viewmodel.SmaliEditorViewModel
+import com.devtool.app.ui.viewmodel.vmFactory
 import java.io.File
-
-private const val MAX_BYTES = 600_000L
 
 private val EBg = Color(0xFF05070C)
 private val EBar = Color(0xFF0E131C)
@@ -78,20 +73,30 @@ private val EOrange = Color(0xFFFFB067)
 
 private val codeStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, lineHeight = 19.sp)
 
+/** ViewModel editor untuk satu proyek. Kartu pembuka dan jendela editor memakai instance yang sama. */
+@Composable
+private fun rememberEditorVm(project: String): SmaliEditorViewModel {
+    val appCtx = LocalContext.current.applicationContext
+    return viewModel(
+        key = "smali-editor-$project",
+        factory = vmFactory { SmaliEditorViewModel(SmaliEngine.smaliRoot(appCtx, project)) },
+    )
+}
+
 // ---------- Kartu pembuka di halaman proyek ----------
 @Composable
 fun SmaliEditorEntry(project: String) {
     val ctx = LocalContext.current
-    var show by remember { mutableStateOf(false) }
-    var hint by remember { mutableStateOf<String?>(null) }
+    val vm = rememberEditorVm(project)
+    var hint by rememberSaveable { mutableStateOf<String?>(null) }
 
     JarCard {
         Column(Modifier.padding(16.dp)) {
-            Text("Editor Smali", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
+            Text("Editor Smali", style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
             Spacer(Modifier.height(6.dp))
             Text(
                 "Buka dan edit file .smali langsung di aplikasi, tanpa pengelola berkas lain.",
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium,
                 color = JarColors.TextMuted,
             )
             Spacer(Modifier.height(12.dp))
@@ -99,7 +104,7 @@ fun SmaliEditorEntry(project: String) {
                 onClick = {
                     if (SmaliEngine.hasSmali(ctx, project)) {
                         hint = null
-                        show = true
+                        vm.open()
                     } else {
                         hint = "Bongkar ke Smali dulu."
                     }
@@ -113,127 +118,60 @@ fun SmaliEditorEntry(project: String) {
             }
         }
     }
-    if (show) SmaliEditorDialog(project) { show = false }
+}
+
+/**
+ * Jendela editor layar penuh. Dipasang di luar daftar yang bisa di-scroll (lihat ProjectBody),
+ * supaya tetap muncul setelah layar diputar walau kartu pembukanya sedang tidak tampil.
+ */
+@Composable
+fun SmaliEditorHost(project: String) {
+    val vm = rememberEditorVm(project)
+    if (vm.visible) SmaliEditorDialog(vm)
 }
 
 // ---------- Jendela editor layar penuh ----------
 @Composable
-private fun SmaliEditorDialog(project: String, onClose: () -> Unit) {
-    val ctx = LocalContext.current
-    val root = remember(project) { SmaliEngine.smaliRoot(ctx, project) }
-    var dir by remember { mutableStateOf(root) }
-    var openFile by remember { mutableStateOf<File?>(null) }
-    var dirty by remember { mutableStateOf(false) }
-    var confirmDiscard by remember { mutableStateOf(false) }
-
-    fun back() {
-        val f = openFile
-        when {
-            f != null -> if (dirty) confirmDiscard = true else openFile = null
-            dir != root -> dir = dir.parentFile ?: root
-            else -> onClose()
-        }
-    }
-
+private fun SmaliEditorDialog(vm: SmaliEditorViewModel) {
     Dialog(
-        onDismissRequest = { back() },
+        onDismissRequest = { vm.back() },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
     ) {
         Column(Modifier.fillMaxSize().background(EBg)) {
-            val f = openFile
-            if (f != null) {
-                SmaliFileEditor(
-                    file = f,
-                    root = root,
-                    onBack = { back() },
-                    onDirtyChange = { dirty = it },
-                )
-            } else {
-                SmaliBrowser(
-                    root = root,
-                    dir = dir,
-                    onDir = { dir = it },
-                    onOpen = { file ->
-                        dir = file.parentFile ?: root
-                        openFile = file
-                    },
-                    onBack = { back() },
-                    onClose = onClose,
-                )
-            }
+            val f = vm.openFile
+            if (f != null) SmaliFileEditor(vm, f) else SmaliBrowser(vm)
         }
     }
 
-    if (confirmDiscard) {
+    if (vm.confirmDiscard) {
         AlertDialog(
-            onDismissRequest = { confirmDiscard = false },
+            onDismissRequest = { vm.cancelDiscard() },
             title = { Text("Buang perubahan?") },
             text = { Text("Perubahan di file ini belum disimpan.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDiscard = false
-                    dirty = false
-                    openFile = null
-                }) { Text("Buang") }
-            },
-            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Batal") } },
+            confirmButton = { TextButton(onClick = { vm.discardChanges() }) { Text("Buang") } },
+            dismissButton = { TextButton(onClick = { vm.cancelDiscard() }) { Text("Batal") } },
         )
     }
 }
 
 // ---------- Penjelajah berkas + cari ----------
 @Composable
-private fun SmaliBrowser(
-    root: File,
-    dir: File,
-    onDir: (File) -> Unit,
-    onOpen: (File) -> Unit,
-    onBack: () -> Unit,
-    onClose: () -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<File>?>(null) }
-    var searching by remember { mutableStateOf(false) }
-
-    LaunchedEffect(query) {
-        val q = query.trim()
-        if (q.length < 2) {
-            results = null
-            searching = false
-            return@LaunchedEffect
-        }
-        searching = true
-        delay(300)
-        results = withContext(Dispatchers.IO) {
-            root.walkTopDown()
-                .onEnter { it == root || !it.name.startsWith("_") }
-                .filter { it.isFile && it.name.endsWith(".smali") && it.name.contains(q, ignoreCase = true) }
-                .take(200)
-                .toList()
-        }
-        searching = false
-    }
-
-    val entries = remember(dir) {
-        dir.listFiles()
-            ?.filter { !it.name.startsWith("_") && it.name != "layout.txt" }
-            ?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
-            .orEmpty()
-    }
+private fun SmaliBrowser(vm: SmaliEditorViewModel) {
+    val query = vm.query
 
     Row(
         Modifier.fillMaxWidth().background(EBar).padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = JarColors.TextPrimary) }
+        IconButton(onClick = { vm.back() }) { Icon(Icons.Outlined.ArrowBack, null, tint = JarColors.TextPrimary) }
         Column(Modifier.weight(1f)) {
             Text("Editor Smali", color = JarColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                dir.relativeTo(root).path.ifEmpty { "Semua dex" },
+                vm.dir.relativeTo(vm.root).path.ifEmpty { "Semua dex" },
                 color = JarColors.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, null, tint = JarColors.TextMuted) }
+        IconButton(onClick = { vm.close() }) { Icon(Icons.Outlined.Close, null, tint = JarColors.TextMuted) }
     }
 
     // Kolom cari
@@ -253,7 +191,7 @@ private fun SmaliBrowser(
             if (query.isEmpty()) Text("Cari nama class (min. 2 huruf)", color = JarColors.TextMuted, fontSize = 14.sp)
             BasicTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = { vm.onQueryChange(it) },
                 singleLine = true,
                 textStyle = TextStyle(color = JarColors.TextPrimary, fontSize = 14.sp),
                 cursorBrush = SolidColor(JarColors.Blue),
@@ -261,18 +199,19 @@ private fun SmaliBrowser(
             )
         }
         if (query.isNotEmpty()) {
-            IconButton(onClick = { query = "" }, modifier = Modifier.size(24.dp)) {
+            IconButton(onClick = { vm.onQueryChange("") }, modifier = Modifier.size(24.dp)) {
                 Icon(Icons.Outlined.Close, null, tint = JarColors.TextMuted, modifier = Modifier.size(18.dp))
             }
         }
     }
 
-    val found = results
+    val found = vm.results
+    val entries = vm.entries
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
         if (found != null) {
             item {
                 Text(
-                    if (searching) "Mencari..." else "${found.size} hasil" + if (found.size >= 200) " (dibatasi 200)" else "",
+                    if (vm.searching) "Mencari..." else "${found.size} hasil" + if (found.size >= 200) " (dibatasi 200)" else "",
                     color = JarColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp),
                 )
             }
@@ -280,8 +219,8 @@ private fun SmaliBrowser(
                 FileRow(
                     folder = false,
                     title = f.name.removeSuffix(".smali"),
-                    subtitle = f.parentFile?.relativeTo(root)?.path.orEmpty(),
-                    onClick = { onOpen(f) },
+                    subtitle = f.parentFile?.relativeTo(vm.root)?.path.orEmpty(),
+                    onClick = { vm.openEditor(f) },
                 )
             }
         } else {
@@ -290,9 +229,9 @@ private fun SmaliBrowser(
             }
             items(entries, key = { it.absolutePath }) { f ->
                 if (f.isDirectory) {
-                    FileRow(folder = true, title = f.name, subtitle = null, onClick = { onDir(f) })
+                    FileRow(folder = true, title = f.name, subtitle = null, onClick = { vm.goDir(f) })
                 } else {
-                    FileRow(folder = false, title = f.name.removeSuffix(".smali"), subtitle = formatSize(f.length()), onClick = { onOpen(f) })
+                    FileRow(folder = false, title = f.name.removeSuffix(".smali"), subtitle = formatSize(f.length()), onClick = { vm.openEditor(f) })
                 }
             }
         }
@@ -327,80 +266,15 @@ private fun FileRow(folder: Boolean, title: String, subtitle: String?, onClick: 
 
 // ---------- Editor satu berkas ----------
 @Composable
-private fun SmaliFileEditor(
-    file: File,
-    root: File,
-    onBack: () -> Unit,
-    onDirtyChange: (Boolean) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    var loaded by remember(file) { mutableStateOf(false) }
-    var tooBig by remember(file) { mutableStateOf(false) }
-    var original by remember(file) { mutableStateOf("") }
-    var text by remember(file) { mutableStateOf(TextFieldValue("")) }
-    var msg by remember(file) { mutableStateOf<String?>(null) }
-    val backup = remember(file) { File(root, "_backup/" + file.relativeTo(root).path) }
-    var hasBackup by remember(file) { mutableStateOf(backup.exists()) }
-
-    LaunchedEffect(file) {
-        if (file.length() > MAX_BYTES) {
-            tooBig = true
-        } else {
-            val s = withContext(Dispatchers.IO) { file.readText() }
-            original = s
-            text = TextFieldValue(s)
-        }
-        loaded = true
-    }
-
-    val dirty = loaded && !tooBig && text.text != original
-    LaunchedEffect(dirty) {
-        onDirtyChange(dirty)
-        if (dirty) msg = null
-    }
-
-    fun save() {
-        val content = text.text
-        scope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    // cadangkan versi asli sekali saja, sebelum tersimpan pertama kali
-                    if (!backup.exists()) {
-                        backup.parentFile?.mkdirs()
-                        file.copyTo(backup)
-                    }
-                    file.writeText(content)
-                }
-                original = content
-                hasBackup = true
-                msg = "Tersimpan"
-            } catch (e: Exception) {
-                msg = "Gagal menyimpan: ${e.message ?: e.javaClass.simpleName}"
-            }
-        }
-    }
-
-    fun restore() {
-        scope.launch {
-            try {
-                val s = withContext(Dispatchers.IO) {
-                    backup.copyTo(file, overwrite = true)
-                    file.readText()
-                }
-                original = s
-                text = TextFieldValue(s)
-                msg = "Dikembalikan ke versi asli"
-            } catch (e: Exception) {
-                msg = "Gagal mengembalikan: ${e.message ?: e.javaClass.simpleName}"
-            }
-        }
-    }
+private fun SmaliFileEditor(vm: SmaliEditorViewModel, file: File) {
+    val dirty = vm.dirty
+    val blocked = vm.blocked
 
     Row(
         Modifier.fillMaxWidth().background(EBar).padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, null, tint = JarColors.TextPrimary) }
+        IconButton(onClick = { vm.back() }) { Icon(Icons.Outlined.ArrowBack, null, tint = JarColors.TextPrimary) }
         Column(Modifier.weight(1f)) {
             Text(
                 file.name.removeSuffix(".smali"),
@@ -408,27 +282,28 @@ private fun SmaliFileEditor(
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
             Text(
-                msg ?: if (dirty) "Belum disimpan" else "Tidak ada perubahan",
+                vm.msg ?: if (dirty) "Belum disimpan" else "Tidak ada perubahan",
                 color = if (dirty) EOrange else JarColors.TextMuted, fontSize = 12.sp,
             )
         }
-        if (hasBackup) {
-            IconButton(onClick = { restore() }) { Icon(Icons.Outlined.Restore, null, tint = JarColors.TextMuted) }
+        if (vm.hasBackup) {
+            IconButton(onClick = { vm.restore() }) { Icon(Icons.Outlined.Restore, null, tint = JarColors.TextMuted) }
         }
-        IconButton(onClick = { save() }, enabled = dirty) {
+        IconButton(onClick = { vm.save() }, enabled = dirty) {
             Icon(Icons.Outlined.Save, null, tint = if (dirty) JarColors.Blue else JarColors.TextMuted)
         }
     }
 
     when {
-        !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        !vm.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Membuka...", color = JarColors.TextMuted)
         }
-        tooBig -> Text(
-            "Berkas ini ${formatSize(file.length())}, terlalu besar untuk editor di aplikasi (batas ${formatSize(MAX_BYTES)}).",
+        blocked != null -> Text(
+            blocked,
             color = JarColors.TextMuted, modifier = Modifier.padding(20.dp),
         )
         else -> {
+            val text = vm.text
             val lineCount = remember(text.text) { text.text.count { it == '\n' } + 1 }
             val gutter = remember(lineCount) { (1..lineCount).joinToString("\n") }
             val vScroll = rememberScrollState()
@@ -442,7 +317,7 @@ private fun SmaliFileEditor(
                 Box(Modifier.weight(1f).horizontalScroll(hScroll)) {
                     BasicTextField(
                         value = text,
-                        onValueChange = { text = it },
+                        onValueChange = { vm.onTextChange(it) },
                         textStyle = codeStyle.copy(color = JarColors.TextPrimary),
                         cursorBrush = SolidColor(JarColors.Blue),
                         modifier = Modifier.widthIn(min = 240.dp).padding(end = 24.dp),

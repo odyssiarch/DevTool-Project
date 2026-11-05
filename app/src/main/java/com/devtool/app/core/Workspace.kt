@@ -27,9 +27,6 @@ object Workspace {
         return if (out.exists()) out else File(dir, "original.jar")
     }
 
-    fun importFile(ctx: Context, file: File): String =
-        file.inputStream().use { importStream(ctx, file.name, it) }
-
     fun importUri(ctx: Context, uri: Uri): String {
         val name = ctx.contentResolver
             .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)

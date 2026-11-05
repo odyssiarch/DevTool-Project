@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Edit
@@ -37,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devtool.app.ui.Routes
 
 // ---------- Warna ----------
 private val Bg = Color(0xFF05070C)
@@ -47,16 +47,11 @@ private val TextMain = Color(0xFFE8ECF4)
 private val TextSub = Color(0xFF8E98AB)
 private val Blue = Color(0xFF6C9BFF)     // lihat / analisis
 private val Orange = Color(0xFFFFB067)   // edit / ubah
-private val Purple = Color(0xFFB69CFF)   // build
-
-data class LastProject(val name: String, val classCount: Int)
 
 // ---------- Layar utama ----------
 @Composable
 fun HomeScreen(
-    lastProject: LastProject?,
-    onOpenTool: (String) -> Unit,   // "source", "smali", "compare", "stub", "patchso"
-    onResume: () -> Unit,
+    onOpenTool: (String) -> Unit,   // menerima rute: Routes.SOURCE, Routes.EDIT, Routes.COMPARE
     onPickFile: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Bg)) {
@@ -84,21 +79,12 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
             AboutCard()
 
-            if (lastProject != null) {
-                Spacer(Modifier.height(14.dp))
-                ResumeCard(lastProject, onResume)
-            }
-
             Spacer(Modifier.height(14.dp))
-            QuickChip(Icons.Outlined.Code, "Lihat kode Java dari JAR", Blue) { onOpenTool("source") }
+            QuickChip(Icons.Outlined.Code, "Lihat kode Java dari JAR", Blue) { onOpenTool(Routes.SOURCE) }
             Spacer(Modifier.height(10.dp))
-            QuickChip(Icons.Outlined.Edit, "Edit Smali lalu susun ulang", Orange) { onOpenTool("smali") }
+            QuickChip(Icons.Outlined.Edit, "Edit Smali lalu susun ulang", Orange) { onOpenTool(Routes.EDIT) }
             Spacer(Modifier.height(10.dp))
-            QuickChip(Icons.Outlined.SwapVert, "Bandingkan dua versi JAR", Blue) { onOpenTool("compare") }
-            Spacer(Modifier.height(10.dp))
-            QuickChip(Icons.Outlined.Build, "Buat stub .so", Purple) { onOpenTool("stub") }
-            Spacer(Modifier.height(10.dp))
-            QuickChip(Icons.Outlined.Edit, "Patch fungsi di .so", Orange) { onOpenTool("patchso") }
+            QuickChip(Icons.Outlined.SwapVert, "Bandingkan dua versi JAR", Blue) { onOpenTool(Routes.COMPARE) }
         }
 
         // Tombol utama menempel di bawah
@@ -159,8 +145,6 @@ private fun AboutCard() {
             AboutLine("Mengedit Smali lalu merakit ulang jadi JAR atau DEX")
             AboutLine("Mendukung dex 035 – 041, termasuk 2 dex dalam 1 kontainer")
             AboutLine("Membandingkan dua JAR sampai level class dan method")
-            AboutLine("Membuat library atau binary stub .so (arm64 / x86_64)")
-            AboutLine("Mem-patch .so yang sudah ada: fungsi, byte hex, dan dependency")
         }
     }
 }
@@ -177,28 +161,6 @@ private fun AboutLine(text: String) {
         )
         Spacer(Modifier.size(10.dp))
         Text(text, color = TextSub, fontSize = 13.sp, lineHeight = 18.sp)
-    }
-}
-
-// ---------- Lanjutkan proyek terakhir ----------
-@Composable
-private fun ResumeCard(project: LastProject, onClick: () -> Unit) {
-    GlassBox(Modifier.fillMaxWidth().clickable(onClick = onClick), RoundedCornerShape(26.dp)) {
-        Row(
-            Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Lanjutkan proyek terakhir", color = TextSub, fontSize = 12.sp)
-                Spacer(Modifier.height(2.dp))
-                Text(project.name, color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                Text(
-                    "${project.classCount} class", color = Blue, fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-            Icon(Icons.Outlined.ChevronRight, null, tint = TextSub)
-        }
     }
 }
 

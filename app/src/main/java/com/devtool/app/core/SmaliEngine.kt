@@ -21,7 +21,7 @@ import java.io.PrintStream
  *   smali/<proyek>/classes.dex-2/   <- dex logis kedua (kalau classes.dex berupa kontainer 041)
  *   smali/<proyek>/layout.txt       <- catatan: nama berkas | versi | folder-foldernya
  */
-object SmaliEngine : DexEngine {
+object SmaliEngine {
 
     private fun threadCount() = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
@@ -82,22 +82,6 @@ object SmaliEngine : DexEngine {
         put32(copy, 0x70, bytes.size) // container_size
         put32(copy, 0x74, 0)          // header_offset
         return copy
-    }
-
-    // ---------- antarmuka DexEngine ----------
-
-    override suspend fun decompileToJava(dexFiles: List<File>, outDir: File) {
-        throw UnsupportedOperationException("Dekompilasi ke Java dilakukan lewat Decompiler (jadx)")
-    }
-
-    /** Bongkar satu berkas dex (boleh kontainer) ke folder Smali di dalam [outDir]. */
-    override suspend fun disassemble(dexFile: File, outDir: File, apiLevel: Int, classpath: List<File>) {
-        withContext(Dispatchers.IO) { disassembleBlocking(dexFile, outDir) {} }
-    }
-
-    /** Rakit satu folder Smali menjadi satu dex biasa. */
-    override suspend fun assemble(smaliDir: File, outDex: File, apiLevel: Int) {
-        withContext(Dispatchers.IO) { assembleBlocking(smaliDir, outDex, apiLevel) }
     }
 
     // ---------- inti ----------

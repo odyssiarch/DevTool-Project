@@ -94,5 +94,6 @@ fun ProjectBody(name: String, edit: Boolean, modifier: Modifier = Modifier) {
                 }
             }
         }
+        if (edit) SmaliEditorHost(name)
     }
 }
