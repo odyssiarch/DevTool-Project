@@ -1,5 +1,6 @@
 package com.devtool.app.ui.viewmodel
 
+import kotlinx.coroutines.Job
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,31 +53,34 @@ class CompareViewModel(private val app: Context) : ViewModel() {
 
     /** Nomor proses. Dinaikkan tiap reset/start supaya proses lama yang dibatalkan tidak menimpa state. */
     private var gen = 0
+    private var job: Job? = null // <--- Tambah ini
 
     /** Batalkan proses yang berjalan dan kosongkan hasil (dipanggil saat JAR diganti). */
-    fun reset() {
-        gen++
-        running = false
-        status = ""
-        error = null
-        result = null
-        checks = emptyList()
-        deep = null
-        selClass = null
-        selMethod = null
-    }
+fun reset() {
+    job?.cancel()
+    job = null
+    gen++
+    running = false
+    status = ""
+    error = null
+    result = null
+    checks = emptyList()
+    deep = null
+    selClass = null
+    selMethod = null
+}
 
-    fun start(oldP: String, newP: String, code: Boolean, res: Boolean) {
-        reset()
-        val mine = gen
-        val da = JarNames.display(oldP)
-        val db = JarNames.display(newP)
-        val na = if (da == db) "$da (lama)" else da
-        val nb = if (da == db) "$db (baru)" else db
-        nameOld = na
-        nameNew = nb
-        running = true
-        viewModelScope.launch {
+fun start(oldP: String, newP: String, code: Boolean, res: Boolean) {
+    reset()
+    val mine = gen
+    val da = JarNames.display(oldP)
+    val db = JarNames.display(newP)
+    val na = if (da == db) "$da (lama)" else da
+    val nb = if (da == db) "$db (baru)" else db
+    nameOld = na
+    nameNew = nb
+    running = true
+            job = viewModelScope.launch {
             try {
                 val c = withContext(Dispatchers.IO) {
                     try {
@@ -93,7 +97,9 @@ class CompareViewModel(private val app: Context) : ViewModel() {
                 result = r
 
                 if (code) {
-                    val d = SmaliDiff.compare(app, oldP, newP, na, nb) { if (mine == gen) status = it }
+                    val d = SmaliDiff.compare(app, oldP, newP, na, nb) { msg ->
+                        viewModelScope.launch { if (mine == gen) status = msg }
+                    }
                     if (mine != gen) return@launch
                     deep = d
                 }

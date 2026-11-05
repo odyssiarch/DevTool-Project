@@ -31,7 +31,15 @@ fun AppRoot() {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
-    val back: () -> Unit = { nav.popBackStack() }
+
+    val back: () -> Unit = {
+        if (!nav.popBackStack()) {
+            nav.navigate(Routes.TOOLS) {
+                popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
 
     Scaffold(
         containerColor = JarColors.Black,
@@ -65,7 +73,6 @@ fun AppRoot() {
     ) { pad ->
         NavHost(nav, startDestination = Routes.TOOLS, modifier = Modifier.padding(pad)) {
 
-            // ----- tab bawah -----
             composable(Routes.TOOLS) {
                 HomeScreen(
                     onOpenTool = { nav.navigate(it) },
@@ -80,17 +87,16 @@ fun AppRoot() {
             }
             composable(Routes.SETTINGS) { SettingsScreen() }
 
-            // ----- edit JAR -----
             composable(Routes.EDIT) { EditJarScreen(onBack = back) }
             composable(Routes.EDITED) { e ->
                 EditedScreen(e.arguments?.getString(Routes.ARG_NAME).orEmpty()) { nav.popBackStack() }
             }
 
-            // ----- info & bandingkan -----
             composable(Routes.INFO) {
                 SourceScreen("INFORMATION-JAR", onBack = back, onPicked = { nav.navigate(Routes.project(it)) })
             }
             composable(Routes.COMPARE) { CompareScreen(onBack = back) }
+            
             composable(
                 Routes.PROJECT,
                 arguments = listOf(
@@ -102,10 +108,10 @@ fun AppRoot() {
                     name = e.arguments?.getString(Routes.ARG_NAME).orEmpty(),
                     edit = e.arguments?.getBoolean(Routes.ARG_EDIT) ?: false,
                     onBack = back,
+                    onExport = { nav.navigate(Routes.exportProject(it)) }
                 )
             }
 
-            // ----- lihat kode sumber -----
             composable(Routes.SOURCE) {
                 DecompileScreen(onBack = back, onPicked = { nav.navigate(Routes.browse(it)) })
             }
@@ -143,7 +149,6 @@ fun AppRoot() {
                 ) { nav.popBackStack() }
             }
 
-            // ----- ekspor -----
             composable(Routes.EXPORT) {
                 SourceScreen(
                     "EXPORT-JAR/DEX",

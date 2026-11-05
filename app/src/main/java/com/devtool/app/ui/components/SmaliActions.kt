@@ -1,6 +1,8 @@
 package com.devtool.app.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -14,7 +16,7 @@ import com.devtool.app.ui.viewmodel.vmFactory
 
 /** Kartu "Edit Smali": tombol bongkar ke Smali dan susun ulang JAR. */
 @Composable
-fun SmaliActions(project: String) {
+fun SmaliActions(project: String, onExport: () -> Unit) {
     val appCtx = LocalContext.current.applicationContext
     // Proses bongkar/rakit hidup di ViewModel (satu per proyek), bukan di composable.
     val vm: SmaliJobViewModel = viewModel(
@@ -56,7 +58,9 @@ fun SmaliActions(project: String) {
                 enabled = !vm.busy && vm.hasSmali,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Susun ulang JAR") }
+            
             if (vm.busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            
             if (vm.lines.isNotEmpty()) {
                 Text(
                     vm.lines.joinToString("\n"),
@@ -64,12 +68,26 @@ fun SmaliActions(project: String) {
                     color = JarColors.TextMuted,
                 )
             }
-            if (vm.outputAda) {
+            
+            // TOMBOL EKSPOR HANYA MUNCUL JIKA BUILD BARU SAJA SUKSES
+            if (vm.buildSukses && vm.outputAda) {
                 Text(
-                    "output.jar tersimpan di:\n${vm.outputPath}\nAmbil lewat menu Ekspor JAR / DEX.",
+                    "output.jar berhasil dibuat di:\n${vm.outputPath}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = JarColors.TextMuted,
+                    color = JarColors.TextPrimary, // Lebih terang biar user sadar build sukses
                 )
+                Button(
+                    onClick = onExport,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = JarColors.Blue,
+                        contentColor = JarColors.Black
+                    ),
+                ) {
+                    Icon(Icons.Outlined.Download, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ekspor JAR / DEX Sekarang")
+                }
             }
         }
     }

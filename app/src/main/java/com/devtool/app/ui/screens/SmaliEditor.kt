@@ -1,5 +1,6 @@
 package com.devtool.app.ui.screens
 
+import com.devtool.app.core.SmaliFiles
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -488,46 +489,37 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
     SideEffect { holder.f = { goBack() } }
 
     val saveWhole: suspend (String) -> String? = { s ->
-        try {
-            withContext(Dispatchers.IO) {
-                ensureBackup(file, backup)
-                file.writeText(s)
-            }
-            hasBackup = true
-            null
-        } catch (e: Exception) {
-            "Gagal menyimpan: ${e.message ?: e.javaClass.simpleName}"
-        }
+    try {
+        withContext(Dispatchers.IO) { SmaliFiles.save(root, file, s) }
+        hasBackup = true
+        null
+    } catch (e: Exception) {
+        "Gagal menyimpan: ${e.message ?: e.javaClass.simpleName}"
     }
+}
 
     val restoreWhole: suspend () -> String? = {
-        try {
-            withContext(Dispatchers.IO) {
-                backup.copyTo(file, overwrite = true)
-                file.readText()
-            }
-        } catch (e: Exception) {
-            null
-        }
+    try {
+        withContext(Dispatchers.IO) { SmaliFiles.restore(root, file) } // <--- Ganti bagian ini
+    } catch (e: Exception) {
+        null
     }
+}
 
     fun saveChunk(c: Chunk): suspend (String) -> String? = { newText ->
-        try {
-            val cur = (text0 ?: "").split('\n')
-            val newLines = newText.split('\n')
-            val joined = (cur.subList(0, c.start) + newLines + cur.subList(c.end + 1, cur.size)).joinToString("\n")
-            withContext(Dispatchers.IO) {
-                ensureBackup(file, backup)
-                file.writeText(joined)
-            }
-            text0 = joined
-            hasBackup = true
-            chunk = Chunk(c.start, c.start + newLines.size - 1, c.title)
-            null
-        } catch (e: Exception) {
-            "Gagal menyimpan: ${e.message ?: e.javaClass.simpleName}"
-        }
+    try {
+        val cur = (text0 ?: "").split('\n')
+        val newLines = newText.split('\n')
+        val joined = (cur.subList(0, c.start) + newLines + cur.subList(c.end + 1, cur.size)).joinToString("\n")
+        withContext(Dispatchers.IO) { SmaliFiles.save(root, file, joined) } // <--- Ganti bagian ini
+        text0 = joined
+        hasBackup = true
+        chunk = Chunk(c.start, c.start + newLines.size - 1, c.title)
+        null
+    } catch (e: Exception) {
+        "Gagal menyimpan: ${e.message ?: e.javaClass.simpleName}"
     }
+}
 
     val t0 = text0
     val c = chunk
@@ -612,13 +604,6 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
             },
             dismissButton = { TextButton(onClick = { confirmRestoreAll = false }) { Text("Batal") } },
         )
-    }
-}
-
-private fun ensureBackup(file: File, backup: File) {
-    if (!backup.exists()) {
-        backup.parentFile?.mkdirs()
-        file.copyTo(backup)
     }
 }
 

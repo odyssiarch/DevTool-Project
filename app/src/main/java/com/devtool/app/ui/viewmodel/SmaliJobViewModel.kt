@@ -31,20 +31,33 @@ class SmaliJobViewModel(
     var outputAda by mutableStateOf(outputJar().exists())
         private set
 
+    // Status: Apakah JAR baru saja sukses dirakit ulang di sesi ini?
+    var buildSukses by mutableStateOf(false)
+        private set
+
     private fun outputJar() = File(Workspace.jarOf(app, project).parentFile, "output.jar")
 
     val outputPath: String get() = outputJar().absolutePath
 
-    fun bongkar() = start { log -> SmaliEngine.disassembleProject(app, project, log) }
+    fun bongkar() = start { log -> 
+        buildSukses = false // Reset status kalau user bongkar ulang
+        SmaliEngine.disassembleProject(app, project, log) 
+    }
 
-    fun susunUlang() = start { log -> SmaliEngine.assembleProject(app, project, log) }
+    fun susunUlang() = start { log -> 
+        buildSukses = false // Reset sebelum build
+        SmaliEngine.assembleProject(app, project, log)
+        buildSukses = true // Jika sampai sini tanpa error/exception, berarti sukses!
+    }
 
     private fun start(task: suspend ((String) -> Unit) -> Unit) {
         if (busy) return
         busy = true
         lines = emptyList()
         viewModelScope.launch {
-            val add: (String) -> Unit = { line -> lines = (lines + line).takeLast(10) }
+            val add: (String) -> Unit = { line ->
+                viewModelScope.launch { lines = (lines + line).takeLast(10) }
+            }
             try {
                 task(add)
             } catch (e: CancellationException) {

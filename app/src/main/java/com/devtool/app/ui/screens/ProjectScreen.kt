@@ -21,16 +21,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun ProjectScreen(name: String, edit: Boolean, onBack: () -> Unit) {
+fun ProjectScreen(name: String, edit: Boolean, onBack: () -> Unit, onExport: (String) -> Unit = {}) {
     Column(Modifier.fillMaxSize()) {
         JarTopBar(JarNames.display(name), onBack)
-        ProjectBody(name, edit, Modifier.weight(1f))
+        ProjectBody(name, edit, onExport = onExport, modifier = Modifier.weight(1f))
     }
 }
 
-/** Isi halaman proyek: ringkasan, daftar dex, dan (kalau edit) kartu Edit Smali. Dipakai ProjectScreen dan EditJarScreen. */
+/** Isi halaman proyek: ringkasan, daftar dex, dan (kalau edit) kartu Edit Smali. */
 @Composable
-fun ProjectBody(name: String, edit: Boolean, modifier: Modifier = Modifier) {
+fun ProjectBody(name: String, edit: Boolean, onExport: (String) -> Unit = {}, modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     var info by remember(name) { mutableStateOf<JarInfo?>(null) }
     var error by remember(name) { mutableStateOf<String?>(null) }
@@ -89,7 +89,7 @@ fun ProjectBody(name: String, edit: Boolean, modifier: Modifier = Modifier) {
                     }
                 }
                 if (edit) {
-                    item { SmaliActions(name) }
+                    item { SmaliActions(name, onExport = { onExport(name) }) }
                     item { SmaliEditorEntry(name) }
                 }
             }

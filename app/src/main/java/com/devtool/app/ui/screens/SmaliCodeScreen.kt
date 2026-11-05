@@ -130,10 +130,11 @@ fun SmaliCodeScreen(project: String, cls: String, onBack: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 Text(status, color = JarColors.TextMuted, textAlign = TextAlign.Center)
             }
-            else -> Box(Modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
-                LazyColumn(Modifier.fillMaxHeight()) {
+            else -> {
+                val hScroll = rememberScrollState()
+                LazyColumn(Modifier.fillMaxSize()) {
                     itemsIndexed(ls) { i, line ->
-                        Row {
+                        Row(Modifier.horizontalScroll(hScroll)) {
                             Text(
                                 "${i + 1}",
                                 color = JarColors.TextMuted,
