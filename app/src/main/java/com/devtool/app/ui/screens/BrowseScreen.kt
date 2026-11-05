@@ -24,6 +24,10 @@ import com.devtool.app.core.ClassEntry
 import com.devtool.app.core.JarAnalyzer
 import com.devtool.app.core.JarNames
 import com.devtool.app.ui.components.JarTopBar
+import com.devtool.app.ui.components.PackageTree
+import com.devtool.app.ui.components.TreeNode
+import com.devtool.app.ui.components.buildTree
+import com.devtool.app.ui.components.filterTree
 import com.devtool.app.ui.theme.JarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -55,10 +59,13 @@ fun BrowseScreen(name: String, onOpenCode: (String) -> Unit, onBack: () -> Unit,
     var path by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
     var selected by remember { mutableStateOf<ClassEntry?>(null) }
+    var roots by remember { mutableStateOf<List<TreeNode>?>(null) }
 
     LaunchedEffect(name) {
         try {
-            classes = withContext(Dispatchers.IO) { JarAnalyzer.classEntries(ctx, name) }
+            val list = withContext(Dispatchers.IO) { JarAnalyzer.classEntries(ctx, name) }
+            roots = withContext(Dispatchers.Default) { buildTree(list.map { it.name }) }
+            classes = list
         } catch (e: Exception) {
             error = e.message ?: "Gagal membaca class"
         }
@@ -79,7 +86,7 @@ fun BrowseScreen(name: String, onOpenCode: (String) -> Unit, onBack: () -> Unit,
             else -> {
                 val q = query.trim()
                 val flat = remember(all, q) { if (q.isEmpty()) emptyList() else all.filter { it.name.contains(q, ignoreCase = true) } }
-                val list = remember(all, path) { listing(all, path) }
+                val byName = remember(all) { all.associateBy { it.name } }
 
                 OutlinedTextField(
                     value = query,
@@ -111,45 +118,14 @@ fun BrowseScreen(name: String, onOpenCode: (String) -> Unit, onBack: () -> Unit,
                         modifier = Modifier.padding(20.dp),
                     )
                 }
-                LazyColumn(Modifier.fillMaxSize()) {
-                    if (q.isEmpty()) {
-                        items(list.folders) { (f, n) ->
-                            ListItem(
-                                leadingContent = { Icon(Icons.Outlined.Folder, null, tint = JarColors.Blue) },
-                                headlineContent = { Text(f) },
-                                supportingContent = { Text("$n class") },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier.clickable { path = if (path.isEmpty()) f else "$path.$f" },
-                            )
-                        }
-                        items(list.leaves) { c ->
-                            ListItem(
-                                leadingContent = { Icon(Icons.Outlined.Description, null, tint = JarColors.TextMuted) },
-                                headlineContent = { Text(c.name.substringAfterLast('.')) },
-                                supportingContent = { Text(c.dex) },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier.clickable { selected = c },
-                            )
-                        }
-                    } else {
-                        items(flat.take(500)) { c ->
-                            ListItem(
-                                leadingContent = { Icon(Icons.Outlined.Description, null, tint = JarColors.TextMuted) },
-                                headlineContent = { Text(c.name) },
-                                supportingContent = { Text(c.dex) },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier.clickable { selected = c },
-                            )
-                        }
-                        if (flat.size > 500) {
-                            item {
-                                Text(
-                                    "Menampilkan 500 dari ${flat.size}. Persempit pencarian.",
-                                    color = JarColors.TextMuted,
-                                    modifier = Modifier.padding(20.dp),
-                                )
-                            }
-                        }
+                val tree = roots
+                if (tree == null) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else {
+                    val searching = q.length >= 2
+                    val shown = remember(tree, q) { if (searching) filterTree(tree, q) else tree }
+                    PackageTree(shown, expandAll = searching, modifier = Modifier.fillMaxSize()) { cls ->
+                        selected = byName[cls]
                     }
                 }
             }

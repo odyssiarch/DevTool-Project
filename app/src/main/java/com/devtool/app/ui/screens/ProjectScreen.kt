@@ -19,7 +19,6 @@ import com.devtool.app.ui.components.*
 import com.devtool.app.ui.theme.JarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.
 
 @Composable
 fun ProjectScreen(name: String, edit: Boolean, onBack: () -> Unit) {
@@ -90,8 +89,11 @@ fun ProjectBody(name: String, edit: Boolean, modifier: Modifier = Modifier) {
                     }
                 }
                 if (edit) {
-        item { SmaliActions(name) }
-        item { SmaliEditorEntry(name) }
-        item { SmaliEditorHost(name) }
+                    item { SmaliActions(name) }
+                    item { SmaliEditorEntry(name) }
+                }
+            }
+        }
+        if (edit) SmaliEditorHost(name)
     }
 }
