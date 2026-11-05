@@ -73,6 +73,7 @@ fun AppRoot() {
                             "compare" -> "compare"
                             "source" -> "source"
                             "export" -> "export"
+                            "stub" -> "stub"
                             else -> "tool/$id"
                         },
                     )
@@ -93,6 +94,7 @@ fun AppRoot() {
                 SourceScreen("INFORMATION-JAR", onBack = { nav.popBackStack() }, onPicked = { nav.navigate("project/$it") })
             }
             composable("compare") { CompareScreen(onBack = { nav.popBackStack() }) }
+            composable("stub") { StubScreen(onBack = { nav.popBackStack() }) }
             composable(
                 "project/{name}?edit={edit}",
                 arguments = listOf(

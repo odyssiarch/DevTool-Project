@@ -23,6 +23,7 @@ private val tools = listOf(
     ToolItem("export", "Ekspor JAR / DEX", null, "Simpan JAR atau classes.dex dari proyek ke penyimpanan", Icons.Outlined.Download),
     ToolItem("compare", "Bandingkan JAR", null, "Bandingkan dua versi dan lihat class serta berkas yang berubah", Icons.Outlined.SwapVert),
     ToolItem("info", "Info JAR", null, "Daftar classes.dex, versi dex, jumlah class, dan API level", Icons.Outlined.Info),
+    ToolItem("stub", "Buat stub .so", "elf", "Buat library .so atau binary stub (arm64 / x86_64)", Icons.Outlined.Build),
 )
 
 @Composable
@@ -32,7 +33,7 @@ fun ToolsScreen(onOpen: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Text("JarPatcher", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
+            Text("DevelopersTool", style = MaterialTheme.typography.headlineMedium, color = JarColors.TextPrimary)
             Spacer(Modifier.height(8.dp))
         }
         items(tools, key = { it.id }) { ToolCard(it) { onOpen(it.id) } }

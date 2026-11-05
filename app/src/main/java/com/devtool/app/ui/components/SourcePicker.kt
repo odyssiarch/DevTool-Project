@@ -6,6 +6,7 @@ import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -80,12 +81,15 @@ fun SourcePickerDialogs(p: SourcePicker) {
                     Text("Belum ada proyek.", color = JarColors.TextMuted)
                 } else {
                     LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                        itemsIndexed(names) { _, n ->
-                            ListItem(
-                                headlineContent = { Text(n) },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                modifier = Modifier.clickable { p.choose(n) },
-                            )
+                        itemsIndexed(names) { i, n ->
+                            Column {
+                                if (i > 0) HorizontalDivider(color = JarColors.Outline)
+                                ListItem(
+                                    headlineContent = { Text(n) },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier = Modifier.clickable { p.choose(n) },
+                                )
+                            }
                         }
                     }
                 }

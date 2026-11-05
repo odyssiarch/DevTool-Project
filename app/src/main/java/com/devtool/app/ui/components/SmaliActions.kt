@@ -7,8 +7,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.devtool.app.core.SmaliEngine
+import com.devtool.app.core.Workspace
 import com.devtool.app.ui.theme.JarColors
 import kotlinx.coroutines.launch
+import java.io.File
 
 /** Kartu "Edit Smali": tombol bongkar ke Smali dan susun ulang JAR. */
 @Composable
@@ -16,8 +18,12 @@ fun SmaliActions(project: String) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
-    var lines by remember { mutableStateOf(listOf<String>()) }
-    var hasSmali by remember { mutableStateOf(SmaliEngine.hasSmali(ctx, project)) }
+    var lines by remember(project) { mutableStateOf(listOf<String>()) }
+    var hasSmali by remember(project) { mutableStateOf(SmaliEngine.hasSmali(ctx, project)) }
+    var konfirmasiTimpa by remember { mutableStateOf(false) }
+
+    fun outputJar() = File(Workspace.jarOf(ctx, project).parentFile, "output.jar")
+    var outputAda by remember(project) { mutableStateOf(outputJar().exists()) }
 
     fun start(task: suspend ((String) -> Unit) -> Unit) {
         scope.launch {
@@ -30,8 +36,26 @@ fun SmaliActions(project: String) {
                 add("GAGAL: ${e.message ?: e.javaClass.simpleName}")
             }
             hasSmali = SmaliEngine.hasSmali(ctx, project)
+            outputAda = outputJar().exists()
             busy = false
         }
+    }
+
+    fun bongkar() = start { log -> SmaliEngine.disassembleProject(ctx, project, log) }
+
+    if (konfirmasiTimpa) {
+        AlertDialog(
+            onDismissRequest = { konfirmasiTimpa = false },
+            containerColor = JarColors.SurfaceHigh,
+            title = { Text("Timpa hasil bongkar?") },
+            text = {
+                Text("Folder Smali untuk proyek ini sudah ada. Membongkar ulang akan menghapus semua edit .smali di dalamnya.")
+            },
+            confirmButton = {
+                TextButton(onClick = { konfirmasiTimpa = false; bongkar() }) { Text("Bongkar ulang") }
+            },
+            dismissButton = { TextButton(onClick = { konfirmasiTimpa = false }) { Text("Batal") } },
+        )
     }
 
     JarCard {
@@ -43,7 +67,7 @@ fun SmaliActions(project: String) {
                 color = JarColors.TextMuted,
             )
             Button(
-                onClick = { start { log -> SmaliEngine.disassembleProject(ctx, project, log) } },
+                onClick = { if (hasSmali) konfirmasiTimpa = true else bongkar() },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Bongkar ke Smali") }
@@ -56,6 +80,13 @@ fun SmaliActions(project: String) {
             if (lines.isNotEmpty()) {
                 Text(
                     lines.joinToString("\n"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JarColors.TextMuted,
+                )
+            }
+            if (outputAda) {
+                Text(
+                    "output.jar tersimpan di:\n${outputJar().absolutePath}\nAmbil lewat menu Ekspor JAR / DEX.",
                     style = MaterialTheme.typography.bodySmall,
                     color = JarColors.TextMuted,
                 )
