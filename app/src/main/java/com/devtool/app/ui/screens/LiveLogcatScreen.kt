@@ -69,7 +69,7 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
                 }
 
                 // Perintah: clear log dulu, lalu mulai logcat
-                val process = ProcessBuilder("su", "-c", "logcat -c && logcat -v time").start()
+                val process = ProcessBuilder("su", "-c", "logcat -b all -c && logcat -b all -v threadtime").start()
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
                 
                 var line: String?
