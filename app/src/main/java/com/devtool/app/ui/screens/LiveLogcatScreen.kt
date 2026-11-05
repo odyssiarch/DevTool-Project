@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,10 +27,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileWriter
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun LiveLogcatScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     
@@ -37,6 +44,8 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
     var logs by remember { mutableStateOf(listOf<String>()) }
     var query by remember { mutableStateOf("") }
     var logcatJob by remember { mutableStateOf<Job?>(null) }
+    var autoSave by remember { mutableStateOf(true) } // Default nyala
+    var savedPath by remember { mutableStateOf<String?>(null) }
 
     // Fungsi untuk memulai logcat
     fun startLogcat() {
@@ -46,6 +55,19 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
         
         logcatJob = scope.launch(Dispatchers.IO) {
             try {
+                // Siapkan file untuk Auto-Save
+                var writer: FileWriter? = null
+                if (autoSave) {
+                    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                    val logDir = File(ctx.getExternalFilesDir(null), "logs")
+                    logDir.mkdirs()
+                    val file = File(logDir, "logcat_$timeStamp.txt")
+                    writer = FileWriter(file, true)
+                    withContext(Dispatchers.Main) {
+                        savedPath = file.absolutePath
+                    }
+                }
+
                 // Perintah: clear log dulu, lalu mulai logcat
                 val process = ProcessBuilder("su", "-c", "logcat -c && logcat -v time").start()
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
@@ -59,11 +81,14 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
                     if (line == null) break
                     
                     buffer.add(line)
+                    // Tulis ke file otomatis jika autoSave nyala
+                    writer?.appendLine(line)
                     
                     // Update UI tiap 500ms biar nggak ngelag parah
                     if (System.currentTimeMillis() - lastUpdate > 500) {
+                        writer?.flush() // Paksa simpan ke disk
                         withContext(Dispatchers.Main) {
-                            logs = (logs + buffer).takeLast(2000) // Batasi 2000 baris biar RAM aman
+                            logs = (logs + buffer).takeLast(2000) // Batasi 2000 baris di layar
                             if (query.isEmpty()) {
                                 listState.animateScrollToItem(logs.size.coerceAtLeast(0))
                             }
@@ -72,9 +97,10 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
                         lastUpdate = System.currentTimeMillis()
                     }
                 }
+                writer?.close()
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    logs = logs + "Gagal menjalankan logcat: ${e.message}. Pastikan HP sudah di-root dan izin diberikan."
+                    logs = logs + "Gagal: ${e.message}. Pastikan HP sudah di-root."
                     isRunning = false
                 }
             }
@@ -99,7 +125,7 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         JarTopBarActions("Live Logcat (Root)", onBack) {
             IconButton(onClick = { logs = emptyList() }) {
-                Icon(Icons.Outlined.Clear, contentDescription = "Bersihkan Log")
+                Icon(Icons.Outlined.Clear, contentDescription = "Bersihkan Layar")
             }
             IconButton(onClick = { if (isRunning) stopLogcat() else startLogcat() }) {
                 Icon(
@@ -110,7 +136,7 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
             }
         }
 
-        // Filter bar
+        // Bar Filter & Toggle Auto Save
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -118,7 +144,7 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Filter log (misal: Face, Biometric)", fontSize = 13.sp) },
+                placeholder = { Text("Filter (misal: Face)", fontSize = 13.sp) },
                 singleLine = true,
                 modifier = Modifier.weight(1f).height(50.dp),
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
@@ -128,6 +154,26 @@ fun LiveLogcatScreen(onBack: () -> Unit) {
                     focusedBorderColor = JarColors.Blue,
                     unfocusedBorderColor = JarColors.Outline
                 )
+            )
+            Spacer(Modifier.width(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = autoSave,
+                    onCheckedChange = { autoSave = it },
+                    enabled = !isRunning, // Kunci toggle saat logcat jalan
+                    colors = CheckboxDefaults.colors(checkedColor = JarColors.Blue)
+                )
+                Text("Auto-Save", fontSize = 12.sp, color = JarColors.TextPrimary)
+            }
+        }
+
+        // Tampilkan info path file kalau lagi nyimpen
+        if (savedPath != null && isRunning) {
+            Text(
+                "Menyimpan ke: $savedPath",
+                color = JarColors.TextMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
             )
         }
 
