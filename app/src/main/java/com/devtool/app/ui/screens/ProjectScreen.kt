@@ -90,6 +90,7 @@ fun ProjectBody(name: String, edit: Boolean, modifier: Modifier = Modifier) {
                 }
                 if (edit) {
                     item { SmaliActions(name) }
+                    item { SmaliEditorEntry(name) }
                 }
             }
         }
