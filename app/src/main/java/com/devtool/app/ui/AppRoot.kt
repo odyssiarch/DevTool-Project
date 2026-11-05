@@ -2,7 +2,9 @@ package com.devtool.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,7 +57,8 @@ fun AppRoot() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                        .navigationBarsPadding() // Memberi jarak aman dari gesture bar HP
+                        .padding(horizontal = 24.dp, vertical = 8.dp), // Jarak ngambang dock
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     Surface(
@@ -68,6 +71,7 @@ fun AppRoot() {
                         NavigationBar(
                             containerColor = Color.Transparent,
                             tonalElevation = 0.dp,
+                            windowInsets = WindowInsets(0.dp), // MATIKAN padding bawaan NavigationBar agar tidak dobel
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Dest.entries.forEach { d ->

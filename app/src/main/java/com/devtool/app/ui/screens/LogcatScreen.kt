@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devtool.app.ui.components.JarCard
 import com.devtool.app.ui.components.JarTopBarActions
 import com.devtool.app.ui.theme.JarColors
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +39,6 @@ private val L_WARN = Color(0xFFFFC857)  // Kuning
 private val L_AVC = Color(0xFFFFB067)   // Oranye
 private val L_NORMAL = Color(0xFFE6EAF0)
 
-/** Layar pembaca Ramoops / Logcat untuk mendeteksi crash / bootloop. */
 @Composable
 fun LogcatScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -54,19 +52,25 @@ fun LogcatScreen(onBack: () -> Unit) {
     var onlyErrors by remember { mutableStateOf(false) }
     var fontSize by remember { mutableIntStateOf(12) }
 
-    // Launcher untuk memilih file log
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 try {
                     val text = withContext(Dispatchers.IO) {
-                        ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } ?: ""
+                        // 1. Baca sebagai byte array (biar nggak crash baca file binary/karakter aneh)
+                        val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+                        // 2. Ubah ke ISO-8859-1 (aman untuk semua byte)
+                        val raw = String(bytes, Charsets.ISO_8859_1)
+                        // 3. Bersihkan karakter aneh (hanya sisakan ASCII yang bisa dibaca, enter, dan tab)
+                        val cleaned = raw.replace(Regex("[^\\x20-\\x7E\\n\\r\\t]"), "")
+                        // 4. Rapihkan format enter (Windows ke Linux)
+                        cleaned.replace("\r\n", "\n").replace("\r", "\n")
                     }
                     code = text
-                    lines = text.lines()
+                    lines = text.split("\n")
                     fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "Log File"
                 } catch (e: Exception) {
-                    // Abaikan error baca file
+                    // Abaikan error
                 }
             }
         }
@@ -82,7 +86,7 @@ fun LogcatScreen(onBack: () -> Unit) {
         }
 
         if (code == null) {
-            // Tampilan sebelum file dipilih
+            // Tampilan Awal
             Column(
                 Modifier.fillMaxSize().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,7 +109,7 @@ fun LogcatScreen(onBack: () -> Unit) {
                 }
             }
         } else {
-            // Bar Filter & Pencarian
+            // Bar Pencarian & Filter
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -135,14 +139,12 @@ fun LogcatScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Filter Logika
+            // Logika Filter
             val filteredLines = remember(lines, query, onlyErrors) {
                 lines.filter { line ->
                     val matchQuery = query.isEmpty() || line.contains(query, ignoreCase = true)
                     val matchError = if (onlyErrors) {
-                        val l = line.lowercase()
-                        l.contains("fatal") || l.contains("panic") || l.contains("exception") || 
-                        l.contains(" error ") || l.contains("avc: denied")
+                        isCrashLine(line)
                     } else true
                     matchQuery && matchError
                 }
@@ -174,13 +176,22 @@ fun LogcatScreen(onBack: () -> Unit) {
     }
 }
 
-// Fungsi pewarnaan teks
+// Fungsi deteksi error khusus porter ROM
+private fun isCrashLine(line: String): Boolean {
+    val l = line.lowercase()
+    return l.contains("fatal") || l.contains("panic") || l.contains("exception") || 
+           l.contains(" error ") || l.contains("avc: denied") || l.contains("sigsegv") || 
+           l.contains("sigabrt") || l.contains("backtrace:") || l.contains("data abort") || 
+           l.contains("kernel bug") || l.contains("oops:")
+}
+
+// Fungsi Pewarnaan Teks
 private fun highlightLog(line: String): AnnotatedString {
-    val lower = line.lowercase()
+    val l = line.lowercase()
     val color = when {
-        lower.contains("fatal") || lower.contains("panic") || lower.contains("exception") || lower.contains(" error ") -> L_FATAL
-        lower.contains("avc: denied") -> L_AVC
-        lower.contains("warning") || lower.contains("warn") -> L_WARN
+        isCrashLine(line) -> L_FATAL
+        l.contains("avc: denied") -> L_AVC
+        l.contains("warning") || l.contains("warn") -> L_WARN
         else -> L_NORMAL
     }
     return buildAnnotatedString {
