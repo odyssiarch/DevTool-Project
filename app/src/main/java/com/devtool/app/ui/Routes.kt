@@ -19,6 +19,7 @@ object Routes {
     const val COMPARE = "compare"
     const val SOURCE = "source"
     const val EXPORT = "export"
+    const val LOGCAT = "logcat"
 
     // Nama argumen
     const val ARG_NAME = "name"

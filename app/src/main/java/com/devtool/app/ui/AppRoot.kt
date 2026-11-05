@@ -1,6 +1,10 @@
 package com.devtool.app.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Folder
@@ -8,8 +12,11 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -45,27 +52,46 @@ fun AppRoot() {
         containerColor = JarColors.Black,
         bottomBar = {
             if (Dest.entries.any { it.route == route }) {
-                NavigationBar(containerColor = JarColors.Surface) {
-                    Dest.entries.forEach { d ->
-                        NavigationBarItem(
-                            selected = route == d.route,
-                            onClick = {
-                                nav.navigate(d.route) {
-                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(d.icon, contentDescription = d.label) },
-                            label = { Text(d.label) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = JarColors.Blue,
-                                selectedTextColor = JarColors.Blue,
-                                indicatorColor = JarColors.BlueDim,
-                                unselectedIconColor = JarColors.TextMuted,
-                                unselectedTextColor = JarColors.TextMuted,
-                            ),
-                        )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(32.dp),
+                        color = JarColors.Surface,
+                        border = BorderStroke(1.dp, JarColors.Outline),
+                        shadowElevation = 8.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        NavigationBar(
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Dest.entries.forEach { d ->
+                                NavigationBarItem(
+                                    selected = route == d.route,
+                                    onClick = {
+                                        nav.navigate(d.route) {
+                                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(d.icon, contentDescription = d.label) },
+                                    label = { Text(d.label) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = JarColors.Blue,
+                                        selectedTextColor = JarColors.Blue,
+                                        indicatorColor = JarColors.BlueDim,
+                                        unselectedIconColor = JarColors.TextMuted,
+                                        unselectedTextColor = JarColors.TextMuted,
+                                    ),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -87,13 +113,12 @@ fun AppRoot() {
             }
             composable(Routes.SETTINGS) { SettingsScreen() }
 
-            composable(Routes.EDIT) {
-               EditJarScreen(
-                  onBack = back,
-                  onExport = { nav.navigate(Routes.exportProject(it)) }
-               )
-            }      
-               
+            composable(Routes.EDIT) { 
+                EditJarScreen(
+                    onBack = back,
+                    onExport = { nav.navigate(Routes.exportProject(it)) }
+                ) 
+            }
             composable(Routes.EDITED) { e ->
                 EditedScreen(e.arguments?.getString(Routes.ARG_NAME).orEmpty()) { nav.popBackStack() }
             }
@@ -102,6 +127,9 @@ fun AppRoot() {
                 SourceScreen("INFORMATION-JAR", onBack = back, onPicked = { nav.navigate(Routes.project(it)) })
             }
             composable(Routes.COMPARE) { CompareScreen(onBack = back) }
+            
+            // --- FITUR BARU: LOGCAT ---
+            composable(Routes.LOGCAT) { LogcatScreen(onBack = back) }
             
             composable(
                 Routes.PROJECT,

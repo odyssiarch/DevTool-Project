@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,20 +39,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devtool.app.ui.Routes
 
-// ---------- Warna ----------
 private val Bg = Color(0xFF05070C)
 private val GlassTop = Color(0xFF1B2332)
 private val GlassBottom = Color(0xFF0E131C)
 private val Stroke = Color(0xFF2A3446)
 private val TextMain = Color(0xFFE8ECF4)
 private val TextSub = Color(0xFF8E98AB)
-private val Blue = Color(0xFF6C9BFF)     // lihat / analisis
-private val Orange = Color(0xFFFFB067)   // edit / ubah
+private val Blue = Color(0xFF6C9BFF)
+private val Orange = Color(0xFFFFB067)
 
-// ---------- Layar utama ----------
 @Composable
 fun HomeScreen(
-    onOpenTool: (String) -> Unit,   // menerima rute: Routes.SOURCE, Routes.EDIT, Routes.COMPARE
+    onOpenTool: (String) -> Unit,
     onPickFile: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Bg)) {
@@ -62,7 +61,6 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp)
                 .padding(top = 48.dp, bottom = 110.dp),
         ) {
-            // Header: logo di samping judul
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 HeroLogo(64.dp)
                 Spacer(Modifier.size(16.dp))
@@ -85,9 +83,12 @@ fun HomeScreen(
             QuickChip(Icons.Outlined.Edit, "Edit Smali lalu susun ulang", Orange) { onOpenTool(Routes.EDIT) }
             Spacer(Modifier.height(10.dp))
             QuickChip(Icons.Outlined.SwapVert, "Bandingkan dua versi JAR", Blue) { onOpenTool(Routes.COMPARE) }
+            
+            // TOMBOL RAMOOPS BARU
+            Spacer(Modifier.height(10.dp))
+            QuickChip(Icons.Outlined.Warning, "Baca Logcat / Ramoops", Orange) { onOpenTool(Routes.LOGCAT) }
         }
 
-        // Tombol utama menempel di bawah
         Row(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -108,7 +109,6 @@ fun HomeScreen(
     }
 }
 
-// ---------- Logo kotak membulat ----------
 @Composable
 private fun HeroLogo(size: Dp) {
     val shape = RoundedCornerShape(size * 0.31f)
@@ -124,7 +124,6 @@ private fun HeroLogo(size: Dp) {
     }
 }
 
-// ---------- Keterangan: DevTool bisa apa saja ----------
 @Composable
 private fun AboutCard() {
     GlassBox(Modifier.fillMaxWidth(), RoundedCornerShape(28.dp)) {
@@ -145,6 +144,7 @@ private fun AboutCard() {
             AboutLine("Mengedit Smali lalu merakit ulang jadi JAR atau DEX")
             AboutLine("Mendukung dex 035 – 041, termasuk 2 dex dalam 1 kontainer")
             AboutLine("Membandingkan dua JAR sampai level class dan method")
+            AboutLine("Membaca Ramoops untuk mendeteksi penyebab bootloop")
         }
     }
 }
@@ -164,7 +164,6 @@ private fun AboutLine(text: String) {
     }
 }
 
-// ---------- Chip aksi cepat ----------
 @Composable
 private fun QuickChip(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
     val shape = RoundedCornerShape(26.dp)
@@ -185,7 +184,6 @@ private fun QuickChip(icon: ImageVector, label: String, tint: Color, onClick: ()
     }
 }
 
-// ---------- Wadah gaya kaca gelap ----------
 @Composable
 private fun GlassBox(
     modifier: Modifier,
