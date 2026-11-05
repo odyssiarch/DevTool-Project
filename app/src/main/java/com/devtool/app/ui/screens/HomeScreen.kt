@@ -34,7 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -55,7 +55,7 @@ data class LastProject(val name: String, val classCount: Int)
 @Composable
 fun HomeScreen(
     lastProject: LastProject?,
-    onOpenTool: (String) -> Unit,   // "source", "edit", "compare", "stub"
+    onOpenTool: (String) -> Unit,   // "source", "smali", "compare", "stub"
     onResume: () -> Unit,
     onPickFile: () -> Unit,
 ) {
@@ -65,17 +65,21 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(top = 56.dp, bottom = 110.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(top = 48.dp, bottom = 110.dp),
         ) {
-            HeroLogo()
-            Spacer(Modifier.height(18.dp))
-            Text("DevTool", color = TextMain, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Bongkar, edit, dan susun ulang JAR langsung di HP",
-                color = TextSub, fontSize = 14.sp, textAlign = TextAlign.Center,
-            )
+            // Header: logo di samping judul
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                HeroLogo(64.dp)
+                Spacer(Modifier.size(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("DevTool", color = TextMain, fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "Bongkar, edit, dan susun ulang JAR langsung di HP",
+                        color = TextSub, fontSize = 13.sp, lineHeight = 18.sp,
+                    )
+                }
+            }
 
             Spacer(Modifier.height(24.dp))
             AboutCard()
@@ -116,19 +120,19 @@ fun HomeScreen(
     }
 }
 
-// ---------- Logo kotak membulat (pengganti foto bundar) ----------
+// ---------- Logo kotak membulat ----------
 @Composable
-private fun HeroLogo() {
-    val shape = RoundedCornerShape(30.dp)
+private fun HeroLogo(size: Dp) {
+    val shape = RoundedCornerShape(size * 0.31f)
     Box(
         Modifier
-            .size(96.dp)
+            .size(size)
             .clip(shape)
             .background(Brush.linearGradient(listOf(Color(0xFF223052), Color(0xFF111827))))
             .border(1.dp, Brush.linearGradient(listOf(Color(0xFF4B6199), Color(0xFF1E2638))), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Outlined.Code, null, tint = Blue, modifier = Modifier.size(48.dp))
+        Icon(Icons.Outlined.Code, null, tint = Blue, modifier = Modifier.size(size * 0.5f))
     }
 }
 

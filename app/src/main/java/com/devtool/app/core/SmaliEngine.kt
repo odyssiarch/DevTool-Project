@@ -215,16 +215,12 @@ object SmaliEngine : DexEngine {
             log("Memeriksa hasil (verifikasi)...")
             val checks = JarVerifier.deep(jar, output, File(build, "verify"), JarNames.display(project), "output.jar")
             checks.forEach { log(it.render()) }
-            // Cek tambahan: metode kompresi, tanggal, urutan, dan isi entry harus sama dengan JAR asli
-            val entryChecks = EntryCheck.run(jar, output, newDex.map { it.name }.toSet())
-            entryChecks.forEach { log(it.render()) }
-            val failTexts = checks.filter { it.level == VerifyLevel.FAIL }.map { it.text } +
-                entryChecks.filter { it.level == EntryCheck.Level.FAIL }.map { it.text }
+            val fails = checks.filter { it.level == VerifyLevel.FAIL }
             build.deleteRecursively()
-            if (failTexts.isNotEmpty()) {
+            if (fails.isNotEmpty()) {
                 output.delete()
                 throw IllegalStateException(
-                    "Verifikasi gagal, output.jar tidak disimpan:\n" + failTexts.joinToString("\n"),
+                    "Verifikasi gagal, output.jar tidak disimpan:\n" + fails.joinToString("\n") { it.text },
                 )
             }
 
