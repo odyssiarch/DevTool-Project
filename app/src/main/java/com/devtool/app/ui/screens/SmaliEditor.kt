@@ -99,15 +99,20 @@ import com.devtool.app.ui.components.JarCard
 import com.devtool.app.ui.theme.JarColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-// Berkas di atas batas ini dibuka per method (tidak sebagai satu teks utuh)
-private const val MAX_BYTES = 600_000L
+// Ukuran di atas ini hanya ditandai oranye di daftar berkas (petunjuk "besar")
+private const val MAX_BYTES = 80_000L
+
+// Berkas dengan baris lebih dari ini dibuka per bagian (per method); method/bagian yang lebih
+// panjang dari ini dipecah lagi. Jadi editor tidak pernah memuat ribuan baris sekaligus.
+private const val MAX_LINES = 400
 
 // Pewarnaan sintaks dimatikan untuk teks yang lebih panjang dari ini (supaya tidak lag)
-private const val HIGHLIGHT_MAX = 250_000
+private const val HIGHLIGHT_MAX = 80_000
 
 private val EBg = Color(0xFF1F1E1D)
 private val EBar = Color(0xFF2A2927)
@@ -165,6 +170,7 @@ private fun SmaliEditorDialog(project: String, onClose: () -> Unit) {
     val root = remember(project) { SmaliEngine.smaliRoot(ctx, project) }
     var expanded by remember { mutableStateOf(setOf<String>()) }
     var openFile by remember { mutableStateOf<File?>(null) }
+    var openQuery by remember { mutableStateOf("") }
     val treeState = rememberLazyListState()
     val holder = remember { BackHolder() }
 
@@ -204,6 +210,7 @@ private fun SmaliEditorDialog(project: String, onClose: () -> Unit) {
                             openFile = null
                         },
                         holder = holder,
+                        initialQuery = openQuery,
                     )
                 }
             } else {
@@ -214,7 +221,7 @@ private fun SmaliEditorDialog(project: String, onClose: () -> Unit) {
                         val p = d.absolutePath
                         expanded = if (p in expanded) expanded - p else expanded + p
                     },
-                    onOpen = { file ->
+                    onOpen = { file, qq ->
                         val parents = mutableSetOf<String>()
                         var p = file.parentFile
                         while (p != null && p != root) {
@@ -222,6 +229,7 @@ private fun SmaliEditorDialog(project: String, onClose: () -> Unit) {
                             p = p.parentFile
                         }
                         expanded = expanded + parents
+                        openQuery = qq
                         openFile = file
                     },
                     treeState = treeState,
@@ -238,29 +246,40 @@ private fun SmaliBrowser(
     root: File,
     expanded: Set<String>,
     onToggle: (File) -> Unit,
-    onOpen: (File) -> Unit,
+    onOpen: (File, String) -> Unit,
     treeState: LazyListState,
     onBack: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var byContent by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<File>?>(null) }
+    var hits by remember { mutableStateOf<List<ContentHit>?>(null) }
     var searching by remember { mutableStateOf(false) }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, byContent) {
         val q = query.trim()
-        if (q.length < 2) {
+        val minLen = if (byContent) 3 else 2
+        if (q.length < minLen) {
             results = null
+            hits = null
             searching = false
             return@LaunchedEffect
         }
         searching = true
-        delay(300)
-        results = withContext(Dispatchers.IO) {
-            root.walkTopDown()
-                .onEnter { it == root || !it.name.startsWith("_") }
-                .filter { it.isFile && it.name.endsWith(".smali") && it.name.contains(q, ignoreCase = true) }
-                .take(200)
-                .toList()
+        if (byContent) {
+            delay(600)
+            results = null
+            hits = searchContent(root, q)
+        } else {
+            delay(300)
+            hits = null
+            results = withContext(Dispatchers.IO) {
+                root.walkTopDown()
+                    .onEnter { it == root || !it.name.startsWith("_") }
+                    .filter { it.isFile && it.name.endsWith(".smali") && it.name.contains(q, ignoreCase = true) }
+                    .take(200)
+                    .toList()
+            }
         }
         searching = false
     }
@@ -285,7 +304,7 @@ private fun SmaliBrowser(
             Icon(Icons.Outlined.Search, null, tint = JarColors.TextMuted, modifier = Modifier.size(20.dp))
             Spacer(Modifier.size(10.dp))
             Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) Text("Cari nama class (min. 2 huruf)", color = JarColors.TextMuted, fontSize = 14.sp)
+                if (query.isEmpty()) Text(if (byContent) "Cari isi kode di semua Smali (min. 3 huruf)" else "Cari nama class (min. 2 huruf)", color = JarColors.TextMuted, fontSize = 14.sp)
                 BasicTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -302,8 +321,26 @@ private fun SmaliBrowser(
             }
         }
 
+        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ModeChip("Nama class", !byContent) { byContent = false }
+            ModeChip("Isi kode", byContent) { byContent = true }
+        }
+
         val found = results
-        if (found != null) {
+        val foundHits = hits
+        if (foundHits != null) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+                item {
+                    Text(
+                        if (searching) "Mencari di semua file..." else "${foundHits.size} file cocok" + if (foundHits.size >= 300) " (dibatasi 300)" else "",
+                        color = JarColors.TextMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                }
+                items(foundHits, key = { it.file.absolutePath }) { h ->
+                    HitRow(h, root) { onOpen(h.file, query.trim()) }
+                }
+            }
+        } else if (found != null) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
                 item {
                     Text(
@@ -315,10 +352,16 @@ private fun SmaliBrowser(
                     FileRow(
                         title = f.name.removeSuffix(".smali"),
                         subtitle = f.parentFile?.relativeTo(root)?.path.orEmpty(),
-                        onClick = { onOpen(f) },
+                        onClick = { onOpen(f, "") },
                     )
                 }
             }
+        } else if (byContent && searching) {
+            Text(
+                "Mencari di semua file...",
+                color = JarColors.TextMuted, fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
         } else {
             LazyColumn(
                 state = treeState,
@@ -328,10 +371,86 @@ private fun SmaliBrowser(
                 items(rows, key = { it.file.absolutePath }) { item ->
                     val open = item.file.absolutePath in expanded
                     TreeRow(item, open) {
-                        if (item.file.isDirectory) onToggle(item.file) else onOpen(item.file)
+                        if (item.file.isDirectory) onToggle(item.file) else onOpen(item.file, "")
                     }
                 }
             }
+        }
+    }
+}
+
+private class ContentHit(val file: File, val count: Int, val line: Int, val snippet: String)
+
+/** Cari teks di isi semua berkas .smali. Satu hasil per berkas: jumlah kecocokan dan baris pertama. */
+private suspend fun searchContent(root: File, q: String): List<ContentHit> = withContext(Dispatchers.IO) {
+    val out = ArrayList<ContentHit>()
+    root.walkTopDown()
+        .onEnter { it == root || !it.name.startsWith("_") }
+        .filter { it.isFile && it.name.endsWith(".smali") }
+        .forEach { f ->
+            ensureActive()
+            var count = 0
+            var first = 0
+            var snip = ""
+            var n = 0
+            f.bufferedReader().useLines { seq ->
+                for (line in seq) {
+                    n++
+                    if (line.contains(q, ignoreCase = true)) {
+                        count++
+                        if (count == 1) {
+                            first = n
+                            snip = line.trim()
+                        }
+                    }
+                }
+            }
+            if (count > 0) {
+                out.add(ContentHit(f, count, first, snip))
+                if (out.size >= 300) return@withContext out
+            }
+        }
+    out
+}
+
+@Composable
+private fun ModeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = if (selected) JarColors.Accent else JarColors.TextMuted,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) JarColors.AccentDim else Color(0xFF2A2927))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun HitRow(h: ContentHit, root: File, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Description, null, tint = JarColors.TextMuted, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.size(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(h.file.name.removeSuffix(".smali"), color = JarColors.TextPrimary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                h.file.parentFile?.relativeTo(root)?.path.orEmpty() + "  •  ${h.count} kecocokan",
+                color = JarColors.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "${h.line}: ${h.snippet}",
+                color = JarColors.Accent, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -462,9 +581,9 @@ private fun ActionIcon(
 
 // ---------- Satu berkas: utuh, atau per method kalau besar ----------
 @Composable
-private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: BackHolder) {
+private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: BackHolder, initialQuery: String = "") {
     val scope = rememberCoroutineScope()
-    val big = remember(file) { file.length() > MAX_BYTES }
+    var big by remember(file) { mutableStateOf(false) }
     val backup = remember(file) { File(root, "_backup/" + file.relativeTo(root).path) }
     var hasBackup by remember(file) { mutableStateOf(backup.exists()) }
     var dirty by remember(file) { mutableStateOf(false) }
@@ -473,10 +592,14 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
     var text0 by remember(file) { mutableStateOf<String?>(null) }
     var chunk by remember(file) { mutableStateOf<Chunk?>(null) }
     var listMsg by remember(file) { mutableStateOf<String?>(null) }
+    var openQuery by remember(file) { mutableStateOf("") }
+    var listQuery by remember(file) { mutableStateOf(initialQuery) }
     val name = file.name.removeSuffix(".smali")
 
     LaunchedEffect(file) {
-        text0 = withContext(Dispatchers.IO) { file.readText() }
+        val t = withContext(Dispatchers.IO) { file.readText() }
+        big = t.count { it == '\n' } + 1 > MAX_LINES
+        text0 = t
     }
 
     fun goBack() {
@@ -533,6 +656,7 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
                 subtitle = null,
                 firstLine = 1,
                 initial = t0,
+                initialQuery = initialQuery,
                 onSave = saveWhole,
                 onRestore = if (hasBackup) restoreWhole else null,
                 onDirtyChange = { dirty = it },
@@ -540,15 +664,19 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
             )
         }
         c == null -> {
-            val chunks = remember(t0) { parseChunks(t0.split('\n')) }
+            val lines = remember(t0) { t0.split('\n') }
+            val chunks = remember(lines) { parseChunks(lines) }
             MethodList(
                 name = name,
+                lines = lines,
+                initialQuery = listQuery,
+                onQuery = { listQuery = it },
                 sizeText = formatSize(file.length()),
                 chunks = chunks,
                 message = listMsg,
                 canRestore = hasBackup,
                 onRestore = { confirmRestoreAll = true },
-                onOpen = { listMsg = null; chunk = it },
+                onOpen = { ch, qq -> listMsg = null; openQuery = qq; chunk = ch },
                 onBack = { goBack() },
             )
         }
@@ -559,6 +687,10 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
                 subtitle = c.title,
                 firstLine = c.start + 1,
                 initial = initial,
+                initialQuery = openQuery,
+                onSearchFile = { q ->
+                    if (dirty) confirmDiscard = true else { listQuery = q; chunk = null }
+                },
                 onSave = saveChunk(c),
                 onRestore = null,
                 onDirtyChange = { dirty = it },
@@ -607,10 +739,11 @@ private fun SmaliFileScreen(file: File, root: File, onExit: () -> Unit, holder: 
     }
 }
 
-/** Pecah berkas smali jadi bagian yang bisa diedit: kepala class + tiap method. */
+/** Pecah berkas smali jadi bagian yang bisa diedit: kepala class + tiap method (dipecah lagi bila panjang). */
 private fun parseChunks(lines: List<String>): List<Chunk> {
     val out = ArrayList<Chunk>()
     var firstStart = -1
+    var lastEnd = -1
     var i = 0
     while (i < lines.size) {
         val l = lines[i]
@@ -618,34 +751,78 @@ private fun parseChunks(lines: List<String>): List<Chunk> {
             if (firstStart < 0) firstStart = i
             var j = i + 1
             while (j < lines.size && !lines[j].startsWith(".end method")) j++
-            out.add(Chunk(i, minOf(j, lines.size - 1), l.removePrefix(".method ").trim()))
+            val end = minOf(j, lines.size - 1)
+            addWindows(out, i, end, l.removePrefix(".method ").trim())
+            lastEnd = end
             i = j + 1
         } else {
             i++
         }
     }
-    if (firstStart > 0) out.add(0, Chunk(0, firstStart - 1, "Kepala class dan field"))
+    if (firstStart < 0) {
+        addWindows(out, 0, lines.size - 1, "Isi berkas")
+    } else {
+        if (firstStart > 0) {
+            val head = ArrayList<Chunk>()
+            addWindows(head, 0, firstStart - 1, "Kepala class dan field")
+            out.addAll(0, head)
+        }
+        if (lastEnd < lines.size - 1 && (lastEnd + 1 until lines.size).any { lines[it].isNotBlank() }) {
+            addWindows(out, lastEnd + 1, lines.size - 1, "Bagian akhir")
+        }
+    }
     return out
+}
+
+private fun addWindows(out: MutableList<Chunk>, start: Int, end: Int, title: String) {
+    val n = end - start + 1
+    if (n <= MAX_LINES) {
+        out.add(Chunk(start, end, title))
+        return
+    }
+    val parts = (n + MAX_LINES - 1) / MAX_LINES
+    for (k in 0 until parts) {
+        val st = start + k * MAX_LINES
+        val en = minOf(end, st + MAX_LINES - 1)
+        out.add(Chunk(st, en, "$title  (bagian ${k + 1}/$parts)"))
+    }
 }
 
 // ---------- Daftar method (berkas besar) ----------
 @Composable
 private fun MethodList(
     name: String,
+    lines: List<String>,
+    initialQuery: String,
+    onQuery: (String) -> Unit,
     sizeText: String,
     chunks: List<Chunk>,
     message: String?,
     canRestore: Boolean,
     onRestore: () -> Unit,
-    onOpen: (Chunk) -> Unit,
+    onOpen: (Chunk, String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var q by remember { mutableStateOf("") }
-    val shown = remember(chunks, q) {
-        val t = q.trim()
-        if (t.isEmpty()) chunks else chunks.filter { it.title.contains(t, ignoreCase = true) }
+    var q by remember { mutableStateOf(initialQuery) }
+    val t = q.trim()
+    LaunchedEffect(t) { onQuery(t) }
+    // Cari juga di isi method: jumlah kecocokan per method (kunci = baris awal method)
+    val hitMap = remember(chunks, lines, t) {
+        val m = HashMap<Int, Int>()
+        if (t.length >= 2) {
+            for (c in chunks) {
+                var n = 0
+                for (i in c.start..c.end) if (lines[i].contains(t, ignoreCase = true)) n++
+                if (n > 0) m[c.start] = n
+            }
+        }
+        m
     }
-    val status = message ?: "Berkas besar ($sizeText), dibuka per method"
+    val shown = remember(chunks, t, hitMap) {
+        if (t.isEmpty()) chunks
+        else chunks.filter { it.title.contains(t, ignoreCase = true) || hitMap.containsKey(it.start) }
+    }
+    val status = message ?: "Berkas besar ($sizeText), dibuka per bagian"
     val statusColor = if (message != null) JarColors.Accent else JarColors.TextMuted
 
     Column(Modifier.fillMaxSize()) {
@@ -670,7 +847,7 @@ private fun MethodList(
             Icon(Icons.Outlined.Search, null, tint = JarColors.TextMuted, modifier = Modifier.size(20.dp))
             Spacer(Modifier.size(10.dp))
             Box(Modifier.weight(1f)) {
-                if (q.isEmpty()) Text("Cari method (${chunks.size})", color = JarColors.TextMuted, fontSize = 14.sp)
+                if (q.isEmpty()) Text("Cari method atau isi (${chunks.size})", color = JarColors.TextMuted, fontSize = 14.sp)
                 BasicTextField(
                     value = q,
                     onValueChange = { q = it },
@@ -688,7 +865,7 @@ private fun MethodList(
                     Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .clickable { onOpen(m) }
+                        .clickable { onOpen(m, if (hitMap.containsKey(m.start)) t else "") }
                         .padding(horizontal = 6.dp, vertical = 11.dp),
                 ) {
                     Text(
@@ -696,7 +873,12 @@ private fun MethodList(
                         color = JarColors.TextPrimary, fontSize = 13.sp, fontFamily = FontFamily.Monospace,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
-                    Text("baris ${m.start + 1} - ${m.end + 1}", color = JarColors.TextMuted, fontSize = 11.sp)
+                    val hits = hitMap[m.start]
+                    Text(
+                        "baris ${m.start + 1} - ${m.end + 1}" + if (hits != null) "  •  $hits kecocokan" else "",
+                        color = if (hits != null) JarColors.Accent else JarColors.TextMuted,
+                        fontSize = 11.sp,
+                    )
                 }
             }
         }
@@ -717,10 +899,12 @@ private fun CodeEditor(
     subtitle: String?,
     firstLine: Int,
     initial: String,
+    initialQuery: String = "",
     onSave: suspend (String) -> String?,
     onRestore: (suspend () -> String?)?,
     onDirtyChange: (Boolean) -> Unit,
     onBack: () -> Unit,
+    onSearchFile: ((String) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -735,8 +919,8 @@ private fun CodeEditor(
     var lastPush by remember { mutableStateOf(0L) }
     var msg by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf(false) }
-    var findOpen by remember { mutableStateOf(false) }
-    var findQuery by remember { mutableStateOf("") }
+    var findOpen by remember { mutableStateOf(initialQuery.isNotEmpty()) }
+    var findQuery by remember { mutableStateOf(initialQuery) }
     var caseSensitive by remember { mutableStateOf(false) }
     var matchIdx by remember { mutableStateOf(0) }
 
@@ -824,11 +1008,16 @@ private fun CodeEditor(
         matchIdx = 0
         if (findOpen && matches.isNotEmpty()) goTo(0)
     }
+    var skipFocus by remember { mutableStateOf(initialQuery.isNotEmpty()) }
     LaunchedEffect(findOpen) {
         if (findOpen) {
-            try {
-                focus.requestFocus()
-            } catch (e: Exception) {
+            if (skipFocus) {
+                skipFocus = false
+            } else {
+                try {
+                    focus.requestFocus()
+                } catch (e: Exception) {
+                }
             }
         }
     }
@@ -911,6 +1100,17 @@ private fun CodeEditor(
                         .clickable { caseSensitive = !caseSensitive }
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                 )
+                if (onSearchFile != null) {
+                    Text(
+                        "Semua",
+                        color = if (findQuery.isNotEmpty()) JarColors.Accent else JarColors.TextMuted,
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(enabled = findQuery.isNotEmpty()) { onSearchFile(findQuery.trim()) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
 
