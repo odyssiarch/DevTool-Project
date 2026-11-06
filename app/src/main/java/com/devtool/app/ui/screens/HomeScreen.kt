@@ -114,7 +114,7 @@ fun HomeScreen(
                 Step(Icons.Outlined.FolderOpen, "1", "Pilih JAR", Modifier.weight(1f))
                 Step(Icons.Outlined.Code, "2", "Bongkar", Modifier.weight(1f))
                 Step(Icons.Outlined.Edit, "3", "Edit Smali", Modifier.weight(1f))
-                Step(Icons.Outlined.Build, "4", "Susun ulang", Modifier.weight(1f))
+                Step(Icons.Outlined.Build, "4", "Rakit JAR", Modifier.weight(1f))
             }
         }
 
@@ -189,7 +189,7 @@ private fun Step(icon: ImageVector, number: String, label: String, modifier: Mod
             Text(number, color = JarColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, color = JarColors.TextMuted, fontSize = 13.sp)
+        Text(label, color = JarColors.TextMuted, fontSize = 13.sp, maxLines = 1)
     }
 }
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Warning
@@ -59,6 +60,12 @@ fun MenuScreen(onOpen: (String) -> Unit) {
             Icons.Outlined.Folder, "PROYEK",
             "Daftar proyek, Smali yang sudah diubah, dan ekspor.",
         ) { onOpen(Routes.PROJECTS) }
+        Spacer(Modifier.height(14.dp))
+
+        MenuCard(
+            Icons.Outlined.Fingerprint, "TANGKAP LOG",
+            "Tangkap log fingerprint, face unlock, dan SELinux di latar belakang.",
+        ) { onOpen(Routes.CAPTURE) }
         Spacer(Modifier.height(14.dp))
 
         MenuCard(

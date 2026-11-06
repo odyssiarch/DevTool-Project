@@ -56,7 +56,7 @@ fun IconTile(icon: ImageVector, size: Dp = 48.dp) {
 @Composable
 fun JarCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = JarColors.Surface),
         border = BorderStroke(1.dp, JarColors.Outline),
         modifier = modifier.fillMaxWidth(),

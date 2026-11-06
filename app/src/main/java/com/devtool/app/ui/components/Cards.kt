@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -143,5 +144,36 @@ fun FilePickRow(icon: ImageVector, label: String, onClick: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         Icon(Icons.Outlined.ChevronRight, null, tint = JarColors.TextMuted)
+    }
+}
+
+/** Judul layar besar dengan tombol kembali persegi bulat (opsional). */
+@Composable
+fun ScreenHeader(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 24.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            val shape = RoundedCornerShape(20.dp)
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(shape)
+                    .background(JarColors.Surface)
+                    .border(1.dp, JarColors.Outline, shape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Kembali", tint = JarColors.TextPrimary)
+            }
+            Spacer(Modifier.width(14.dp))
+        }
+        Column {
+            Text(title, color = JarColors.TextPrimary, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+            if (subtitle != null) {
+                Text(subtitle, color = JarColors.TextMuted, fontSize = 14.sp)
+            }
+        }
     }
 }

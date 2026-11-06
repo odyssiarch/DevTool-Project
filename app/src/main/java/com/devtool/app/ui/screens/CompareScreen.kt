@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,7 +79,7 @@ fun CompareScreen(onBack: () -> Unit) {
         ClassDetailScreen(d, k, onBack = { vm.selectClass(null) }, onOpen = { vm.selectMethod(it) })
     } else {
         Column(Modifier.fillMaxSize()) {
-            JarTopBar("Bandingkan JAR", onBack)
+            ScreenHeader("Bandingkan JAR", "Dua versi, sampai level class dan method", onBack)
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -112,7 +114,7 @@ fun CompareScreen(onBack: () -> Unit) {
                             if (a != null && b != null) vm.start(a, b, code, res)
                         },
                         enabled = oldP != null && newP != null && !vm.running,
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(22.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = JarColors.Accent,
                             contentColor = JarColors.Black,
@@ -145,25 +147,19 @@ fun CompareScreen(onBack: () -> Unit) {
 
 @Composable
 private fun PackageCard(title: String, project: String?, picker: SourcePicker) {
-    JarCard {
-        Row(Modifier.padding(16.dp)) {
-            IconTile(Icons.Outlined.Folder)
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = JarColors.TextPrimary)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    if (project != null) JarNames.display(project) else "Pilih JAR yang ingin dibandingkan.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (project != null) JarColors.TextPrimary else JarColors.TextMuted,
-                )
-            }
+    PillCard(title = title.uppercase()) {
+        Text(
+            if (project != null) JarNames.display(project) else "Belum dipilih",
+            color = if (project != null) JarColors.TextPrimary else Kuning,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth()) {
+            TonalAction(Icons.Outlined.Folder, "File JAR", Modifier.weight(1f), picker::openFile)
+            Spacer(Modifier.width(10.dp))
+            TonalAction(Icons.Outlined.History, "Proyek", Modifier.weight(1f), picker::openProjects)
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = picker::openFile) { Text("File JAR") }
-            TextButton(onClick = picker::openProjects) { Text("Proyek yang ada") }
-        }
-        Spacer(Modifier.height(8.dp))
     }
 }
 

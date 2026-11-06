@@ -157,6 +157,7 @@ fun AppRoot() {
             
             // --- FITUR BARU: LOGCAT ---
             composable(Routes.LOGCAT) { LogcatScreen(onBack = back) }
+            composable(Routes.CAPTURE) { CaptureScreen(onBack = back) }
             
             composable(
                 Routes.PROJECT,
