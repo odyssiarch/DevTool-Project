@@ -30,7 +30,7 @@ object SmaliEngine {
         "035" -> 23
         "037" -> 25
         "038" -> 27
-        "039" -> 28
+        "039" -> 29 // 29 (bukan 28): smali baru mau membaca flag hidden API (blacklist/greylist) dari api 29
         "040" -> 34
         else -> 35
     }
