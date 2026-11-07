@@ -23,6 +23,7 @@ object Routes {
     const val EXPORT = "export"
     const val LOGCAT = "logcat"
     const val CAPTURE = "capture"
+    const val SO = "so"
 
     // Nama argumen
     const val ARG_NAME = "name"

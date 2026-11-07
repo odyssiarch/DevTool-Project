@@ -73,6 +73,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.viewinterop.AndroidView
+import com.devtool.app.ui.components.CodeEditorView
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -108,8 +110,8 @@ import java.io.File
 private const val MAX_BYTES = 80_000L
 
 // Berkas dengan baris lebih dari ini dibuka per bagian (per method); method/bagian yang lebih
-// panjang dari ini dipecah lagi. Jadi editor tidak pernah memuat ribuan baris sekaligus.
-private const val MAX_LINES = 400
+// panjang dari ini dipecah lagi.
+private const val MAX_LINES = 2500
 
 // Pewarnaan sintaks dimatikan untuk teks yang lebih panjang dari ini (supaya tidak lag)
 private const val HIGHLIGHT_MAX = 80_000
@@ -907,106 +909,26 @@ private fun CodeEditor(
     onSearchFile: ((String) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val vScroll = rememberScrollState()
-    val hScroll = rememberScrollState()
     val focus = remember { FocusRequester() }
+    val editorRef = remember { mutableStateOf<CodeEditorView?>(null) }
 
-    var original by remember { mutableStateOf(initial) }
-    var text by remember { mutableStateOf(TextFieldValue(initial)) }
-    val undo = remember { mutableStateListOf<TextFieldValue>() }
-    val redo = remember { mutableStateListOf<TextFieldValue>() }
-    var lastPush by remember { mutableStateOf(0L) }
+    var dirty by remember { mutableStateOf(false) }
+    var canUndo by remember { mutableStateOf(false) }
+    var canRedo by remember { mutableStateOf(false) }
+    var matchCount by remember { mutableStateOf(0) }
+    var matchCur by remember { mutableStateOf(0) }
     var msg by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf(false) }
     var findOpen by remember { mutableStateOf(initialQuery.isNotEmpty()) }
     var findQuery by remember { mutableStateOf(initialQuery) }
     var caseSensitive by remember { mutableStateOf(false) }
-    var matchIdx by remember { mutableStateOf(0) }
 
-    val dirty = text.text != original
     LaunchedEffect(dirty) {
         onDirtyChange(dirty)
         if (dirty) msg = null
     }
-
-    fun onEdit(v: TextFieldValue) {
-        if (v.text != text.text) {
-            val now = System.currentTimeMillis()
-            if (undo.isEmpty() || now - lastPush > 700) {
-                undo.add(text)
-                if (undo.size > 40) undo.removeAt(0)
-            }
-            lastPush = now
-            redo.clear()
-        }
-        text = v
-    }
-
-    fun doUndo() {
-        if (undo.isNotEmpty()) {
-            redo.add(text)
-            text = undo.removeAt(undo.lastIndex)
-            lastPush = 0L
-        }
-    }
-
-    fun doRedo() {
-        if (redo.isNotEmpty()) {
-            undo.add(text)
-            text = redo.removeAt(redo.lastIndex)
-            lastPush = 0L
-        }
-    }
-
-    fun insert(s: String) {
-        val sel = text.selection
-        val a = minOf(sel.start, sel.end)
-        val b = maxOf(sel.start, sel.end)
-        onEdit(TextFieldValue(text.text.replaceRange(a, b, s), TextRange(a + s.length)))
-    }
-
-    fun save() {
-        val content = text.text
-        scope.launch {
-            val err = onSave(content)
-            if (err == null) {
-                original = content
-                msg = "Tersimpan"
-            } else {
-                msg = err
-            }
-        }
-    }
-
-    // ----- pencarian di dalam berkas -----
-    val matches = remember(text.text, findQuery, caseSensitive, findOpen) {
-        val out = ArrayList<Int>()
-        if (findOpen && findQuery.isNotEmpty()) {
-            val src = text.text
-            var i = src.indexOf(findQuery, 0, !caseSensitive)
-            while (i >= 0 && out.size < 5000) {
-                out.add(i)
-                i = src.indexOf(findQuery, i + findQuery.length, !caseSensitive)
-            }
-        }
-        out as List<Int>
-    }
-
-    fun goTo(idx: Int) {
-        if (matches.isEmpty()) return
-        val i = ((idx % matches.size) + matches.size) % matches.size
-        matchIdx = i
-        val s = matches[i]
-        text = text.copy(selection = TextRange(s, s + findQuery.length))
-        val line = text.text.take(s).count { it == '\n' }
-        val px = with(density) { codeStyle.lineHeight.toPx() }
-        scope.launch { vScroll.animateScrollTo(((line - 4).coerceAtLeast(0) * px).toInt()) }
-    }
-
     LaunchedEffect(findQuery, caseSensitive, findOpen) {
-        matchIdx = 0
-        if (findOpen && matches.isNotEmpty()) goTo(0)
+        editorRef.value?.setFind(findQuery, caseSensitive, findOpen)
     }
     var skipFocus by remember { mutableStateOf(initialQuery.isNotEmpty()) }
     LaunchedEffect(findOpen) {
@@ -1022,12 +944,19 @@ private fun CodeEditor(
         }
     }
 
-    val curMatch = if (matches.isEmpty()) 0 else matchIdx.coerceIn(0, matches.size - 1)
-    val qlen = findQuery.length
-    val vt = remember(text.text, matches, curMatch, qlen) {
-        object : VisualTransformation {
-            override fun filter(text: AnnotatedString): TransformedText =
-                TransformedText(buildCode(text.text, matches, qlen, curMatch), OffsetMapping.Identity)
+    val insert = remember { { s: String -> editorRef.value?.insert(s); Unit } }
+
+    fun save() {
+        val v = editorRef.value ?: return
+        val content = v.text()
+        scope.launch {
+            val err = onSave(content)
+            if (err == null) {
+                v.markSaved(content)
+                msg = "Tersimpan"
+            } else {
+                msg = err
+            }
         }
     }
 
@@ -1040,8 +969,8 @@ private fun CodeEditor(
 
     Column(Modifier.fillMaxSize()) {
         EditorHeader(title, status, statusColor, onBack) {
-            ActionIcon(Icons.Outlined.Undo, undo.isNotEmpty()) { doUndo() }
-            ActionIcon(Icons.Outlined.Redo, redo.isNotEmpty()) { doRedo() }
+            ActionIcon(Icons.Outlined.Undo, canUndo) { editorRef.value?.undo() }
+            ActionIcon(Icons.Outlined.Redo, canRedo) { editorRef.value?.redo() }
             ActionIcon(Icons.Outlined.Search, true, tint = if (findOpen) JarColors.Accent else JarColors.TextPrimary) {
                 findOpen = !findOpen
             }
@@ -1076,19 +1005,19 @@ private fun CodeEditor(
                             capitalization = KeyboardCapitalization.None,
                             imeAction = ImeAction.Search,
                         ),
-                        keyboardActions = KeyboardActions(onSearch = { goTo(curMatch + 1) }),
+                        keyboardActions = KeyboardActions(onSearch = { editorRef.value?.next() }),
                         modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     )
                 }
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    if (matches.isEmpty()) "0/0" else "${curMatch + 1}/${matches.size}",
+                    if (matchCount == 0) "0/0" else "${matchCur + 1}/$matchCount",
                     color = JarColors.TextMuted, fontSize = 12.sp,
                 )
-                IconButton(onClick = { goTo(curMatch - 1) }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { editorRef.value?.prev() }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Outlined.KeyboardArrowUp, null, tint = JarColors.TextPrimary)
                 }
-                IconButton(onClick = { goTo(curMatch + 1) }, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = { editorRef.value?.next() }, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Outlined.KeyboardArrowDown, null, tint = JarColors.TextPrimary)
                 }
                 Text(
@@ -1114,58 +1043,27 @@ private fun CodeEditor(
             }
         }
 
-        val lineCount = remember(text.text) { text.text.count { it == '\n' } + 1 }
-        val gutter = remember(lineCount, firstLine) { (firstLine until firstLine + lineCount).joinToString("\n") }
-        Row(
-            Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(vScroll)
-                .padding(top = 8.dp, bottom = 24.dp),
-        ) {
-            Text(
-                gutter,
-                style = codeStyle.copy(color = JarColors.TextMuted, textAlign = TextAlign.End),
-                modifier = Modifier.padding(horizontal = 8.dp).widthIn(min = 28.dp),
-            )
-            Box(Modifier.weight(1f).horizontalScroll(hScroll)) {
-                BasicTextField(
-                    value = text,
-                    onValueChange = { onEdit(it) },
-                    textStyle = codeStyle.copy(color = JarColors.TextPrimary),
-                    cursorBrush = SolidColor(JarColors.Accent),
-                    visualTransformation = vt,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.None,
-                        keyboardType = KeyboardType.Ascii,
-                    ),
-                    modifier = Modifier.widthIn(min = 240.dp).padding(end = 24.dp),
-                )
-            }
-        }
-
-        // Bar simbol di atas keyboard
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(EBar)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            for ((label, ins) in SYMBOLS) {
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF353432))
-                        .clickable { insert(ins) }
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = JarColors.TextPrimary, fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+        // Kolom edit native: tidak lewat Compose, jadi mengetik dan menggulir tetap ringan
+        AndroidView(
+            factory = { c ->
+                CodeEditorView(c, firstLine, initial).also { v ->
+                    v.onDirty = { dirty = it }
+                    v.onHistory = { u, r ->
+                        canUndo = u
+                        canRedo = r
+                    }
+                    v.onMatches = { n, k ->
+                        matchCount = n
+                        matchCur = k
+                    }
+                    editorRef.value = v
+                    if (initialQuery.isNotEmpty()) v.setFind(initialQuery, false, true)
                 }
-            }
-        }
+            },
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
+
+        SymbolBar(insert)
     }
 
     if (confirmRestore && onRestore != null) {
@@ -1179,10 +1077,7 @@ private fun CodeEditor(
                     scope.launch {
                         val s = onRestore()
                         if (s != null) {
-                            original = s
-                            text = TextFieldValue(s)
-                            undo.clear()
-                            redo.clear()
+                            editorRef.value?.replaceAll(s)
                             msg = "Dikembalikan ke versi asli"
                         } else {
                             msg = "Gagal mengembalikan"
@@ -1192,6 +1087,32 @@ private fun CodeEditor(
             },
             dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Batal") } },
         )
+    }
+}
+
+// Bar simbol di atas keyboard (dipisah supaya tidak ikut digambar ulang tiap ketikan)
+@Composable
+private fun SymbolBar(onInsert: (String) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(EBar)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        for ((label, ins) in SYMBOLS) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF353432))
+                    .clickable { onInsert(ins) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = JarColors.TextPrimary, fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+            }
+        }
     }
 }
 
@@ -1227,7 +1148,7 @@ private fun buildCode(src: String, matches: List<Int>, qlen: Int, cur: Int): Ann
         }
     }
 
-private fun styleSmali(src: String, b: AnnotatedString.Builder) {
+internal fun styleSmali(src: String, b: AnnotatedString.Builder) {
     val n = src.length
     var i = 0
     while (i < n) {

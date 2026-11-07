@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,25 +65,30 @@ private fun PillNav(route: String?, onSelect: (Dest) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
-                Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Dest.entries.forEach { d ->
                     val sel = route == d.route
-                    Row(
+                    Column(
                         Modifier
-                            .clip(RoundedCornerShape(24.dp))
+                            .weight(1f)
+                            .clip(RoundedCornerShape(26.dp))
                             .background(if (sel) JarColors.SurfaceHigh else Color.Transparent)
                             .clickable { onSelect(d) }
-                            .padding(horizontal = if (sel) 20.dp else 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(d.icon, d.label, tint = if (sel) JarColors.Accent else JarColors.TextMuted)
-                        if (sel) {
-                            Spacer(Modifier.width(10.dp))
-                            Text(d.label, color = JarColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            d.label,
+                            color = if (sel) JarColors.TextPrimary else JarColors.TextMuted,
+                            fontSize = 12.sp,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                        )
                     }
                 }
             }
@@ -158,6 +165,7 @@ fun AppRoot() {
             // --- FITUR BARU: LOGCAT ---
             composable(Routes.LOGCAT) { LogcatScreen(onBack = back) }
             composable(Routes.CAPTURE) { CaptureScreen(onBack = back) }
+            composable(Routes.SO) { SoToolScreen(onBack = back) }
             
             composable(
                 Routes.PROJECT,

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -66,6 +67,12 @@ fun MenuScreen(onOpen: (String) -> Unit) {
             Icons.Outlined.Fingerprint, "TANGKAP LOG",
             "Tangkap log fingerprint, face unlock, dan SELinux di latar belakang.",
         ) { onOpen(Routes.CAPTURE) }
+        Spacer(Modifier.height(14.dp))
+
+        MenuCard(
+            Icons.Outlined.Build, "BINARY / .SO",
+            "Baca file ELF dan .so, lihat simbol dan disassembly, lalu patch.",
+        ) { onOpen(Routes.SO) }
         Spacer(Modifier.height(14.dp))
 
         MenuCard(
